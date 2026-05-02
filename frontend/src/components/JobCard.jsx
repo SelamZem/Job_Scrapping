@@ -1,6 +1,16 @@
 import { Building2, MapPin, ExternalLink, Tag as TagIcon } from 'lucide-react'
 
 function JobCard({ job }) {
+  // Strip HTML tags from text
+  const stripHtml = (html) => {
+    if (!html) return ''
+    const tmp = document.createElement('div')
+    tmp.innerHTML = html
+    return tmp.textContent || tmp.innerText || ''
+  }
+
+  const cleanDescription = stripHtml(job.description)
+
   return (
     <a
       href={job.url}
@@ -33,7 +43,7 @@ function JobCard({ job }) {
       )}
 
       <p className="text-slate-600 text-sm mb-4 line-clamp-3">
-        {job.description}
+        {cleanDescription}
       </p>
 
       {job.tags && job.tags.length > 0 && (
