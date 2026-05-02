@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 from typing import List, Optional
 from app.database import get_db
 from app.models.job import Job
-from app.scrapers import RemotiveAPIScraper, ArbeitnowAPIScraper, RSSWeWorkRemotelyScraper, RSSRemoteOKScraper, SampleDataScraper
+from app.scrapers import RemotiveAPIScraper, ArbeitnowAPIScraper, RSSWeWorkRemotelyScraper, RSSRemoteOKScraper, LandingJobsScraper, SampleDataScraper
 from app.services import TagService
 from pydantic import BaseModel, Field
 
@@ -49,7 +49,8 @@ async def scrape_jobs(request: JobSearchRequest, db: Session = Depends(get_db)):
         ('Remotive', RemotiveAPIScraper()),
         ('Arbeitnow', ArbeitnowAPIScraper()),
         ('We Work Remotely RSS', RSSWeWorkRemotelyScraper()),
-        ('RemoteOK RSS', RSSRemoteOKScraper())
+        ('RemoteOK RSS', RSSRemoteOKScraper()),
+        ('Landing.jobs', LandingJobsScraper())
     ]
     
     fallback_scraper = SampleDataScraper()
