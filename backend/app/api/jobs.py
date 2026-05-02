@@ -25,7 +25,7 @@ class JobResponse(BaseModel):
     tags: List[str] = Field(default_factory=list)
 
 @router.get("/", response_model=List[JobResponse])
-async def get_jobs(db: Session = Depends(get_db), skip: int = 0, limit: int = 50):
+async def get_jobs(db: Session = Depends(get_db), skip: int = 0, limit: int = 200):
     jobs = db.query(Job).offset(skip).limit(limit).all()
     return [
         JobResponse(

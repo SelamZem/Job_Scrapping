@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from app.api import jobs, recommendations, tags
+from app.api import jobs, recommendations, tags, auth
 from app.database import engine, Base
 
 Base.metadata.create_all(bind=engine)
@@ -18,6 +18,7 @@ app.add_middleware(
 app.include_router(jobs.router, prefix="/api/jobs", tags=["jobs"])
 app.include_router(recommendations.router, prefix="/api/recommendations", tags=["recommendations"])
 app.include_router(tags.router, prefix="/api/tags", tags=["tags"])
+app.include_router(auth.router, prefix="/api/auth", tags=["auth"])
 
 @app.get("/")
 async def root():
