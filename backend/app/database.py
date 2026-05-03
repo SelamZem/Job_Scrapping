@@ -12,7 +12,10 @@ DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./jobs.db")
 if DATABASE_URL.startswith("sqlite"):
     engine = create_engine(DATABASE_URL, connect_args={"check_same_thread": False})
 else:
-    # PostgreSQL or other databases
+    # PostgreSQL - use psycopg 3.x driver
+    # Convert postgresql:// to postgresql+psycopg:// for SQLAlchemy
+    if DATABASE_URL.startswith("postgresql://") and not DATABASE_URL.startswith("postgresql+psycopg"):
+        DATABASE_URL = DATABASE_URL.replace("postgresql://", "postgresql+psycopg://", 1)
     engine = create_engine(DATABASE_URL)
 
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
