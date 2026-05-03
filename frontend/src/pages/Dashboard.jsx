@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
-import { Search, Filter, Briefcase, Sparkles, User, LogOut } from 'lucide-react'
-import { useNavigate } from 'react-router-dom'
+import { Search, Filter, Briefcase, Sparkles, User, LogOut, LogIn, UserPlus } from 'lucide-react'
+import { Link, useNavigate } from 'react-router-dom'
 import JobCard from '../components/JobCard'
 import SearchBar from '../components/SearchBar'
 import TagFilter from '../components/TagFilter'
@@ -22,13 +22,9 @@ function Dashboard() {
   const navigate = useNavigate()
 
   useEffect(() => {
-    if (!isAuthenticated()) {
-      navigate('/login')
-      return
-    }
     loadJobs()
     loadTags()
-  }, [navigate])
+  }, [])
 
   useEffect(() => {
     filterJobs()
@@ -135,17 +131,38 @@ function Dashboard() {
                 <Sparkles className="h-4 w-4" />
                 <span className="hidden sm:inline">AI Recommendations</span>
               </button>
-              <div className="flex items-center space-x-2 text-slate-600">
-                <User className="h-5 w-5" />
-                <span className="hidden sm:inline">Profile</span>
-              </div>
-              <button
-                onClick={handleLogout}
-                className="flex items-center space-x-2 text-slate-600 hover:text-red-600 transition-colors"
-              >
-                <LogOut className="h-5 w-5" />
-                <span className="hidden sm:inline">Logout</span>
-              </button>
+              {isAuthenticated() ? (
+                <>
+                  <div className="flex items-center space-x-2 text-slate-600">
+                    <User className="h-5 w-5" />
+                    <span className="hidden sm:inline">Profile</span>
+                  </div>
+                  <button
+                    onClick={handleLogout}
+                    className="flex items-center space-x-2 text-slate-600 hover:text-red-600 transition-colors"
+                  >
+                    <LogOut className="h-5 w-5" />
+                    <span className="hidden sm:inline">Logout</span>
+                  </button>
+                </>
+              ) : (
+                <>
+                  <Link
+                    to="/login"
+                    className="flex items-center space-x-2 text-slate-600 hover:text-primary transition-colors"
+                  >
+                    <LogIn className="h-5 w-5" />
+                    <span className="hidden sm:inline">Login</span>
+                  </Link>
+                  <Link
+                    to="/signup"
+                    className="flex items-center space-x-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors"
+                  >
+                    <UserPlus className="h-5 w-5" />
+                    <span className="hidden sm:inline">Sign Up</span>
+                  </Link>
+                </>
+              )}
             </div>
           </div>
         </div>

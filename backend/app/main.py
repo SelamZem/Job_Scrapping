@@ -2,6 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.api import jobs, recommendations, tags, auth
 from app.database import engine, Base
+from app.models.user import User  # Import User model to create table
 
 Base.metadata.create_all(bind=engine)
 
