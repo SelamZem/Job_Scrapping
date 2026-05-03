@@ -1,6 +1,6 @@
 import axios from 'axios'
 
-const API_BASE_URL = '/api'
+const API_BASE_URL = import.meta.env.VITE_API_URL || '/api'
 
 export const getJobs = async () => {
   const response = await axios.get(`${API_BASE_URL}/jobs/?limit=200`)

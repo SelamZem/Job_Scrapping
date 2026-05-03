@@ -17,6 +17,11 @@ services:
         sync: false
       - key: SECRET_KEY
         generateValue: true
+      - key: FRONTEND_URL
+        fromService:
+          type: static
+          name: care-jobs-frontend
+          property: url
     healthCheckPath: /health
 
   # Frontend React service (static site)
