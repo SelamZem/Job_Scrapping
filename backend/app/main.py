@@ -8,9 +8,23 @@ Base.metadata.create_all(bind=engine)
 
 app = FastAPI(title="Care Jobs API", version="1.0.0")
 
+import os
+
+# CORS origins
+origins = [
+    "http://localhost:5173",
+    "http://localhost:5174",
+    "http://localhost:5175",
+]
+
+# Add production frontend URL if available
+frontend_url = os.getenv("FRONTEND_URL")
+if frontend_url:
+    origins.append(frontend_url)
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173"],
+    allow_origins=origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -23,7 +37,7 @@ app.include_router(auth.router, prefix="/api/auth", tags=["auth"])
 
 @app.get("/")
 async def root():
-    return {"message": "Job Scrapping API is running"}
+    return {"message": "Care Jobs API is running", "version": "1.0.0"}
 
 @app.get("/health")
 async def health():
