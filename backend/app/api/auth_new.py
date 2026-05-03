@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from pydantic import BaseModel, field_validator
-from passlib.context import CryptContext
+import bcrypt
 from jose import JWTError, jwt
 from datetime import datetime, timedelta
 from typing import Optional
@@ -10,12 +10,7 @@ from app.models.user import User
 
 router = APIRouter()
 
-# Security - bcrypt truncates passwords to 72 bytes, configure to not raise error
-pwd_context = CryptContext(
-    schemes=["bcrypt"],
-    deprecated="auto",
-    bcrypt__truncate_error=False  # Silently truncate long passwords
-)
+# Security
 SECRET_KEY = "your-secret-key-here-change-in-production"
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 30
@@ -25,6 +20,14 @@ class UserCreate(BaseModel):
     email: str
     username: str
     password: str
+    
+    @field_validator('password')
+    @classmethod
+    def validate_password(cls, v):
+        # Truncate password to 72 bytes max for bcrypt
+        if len(v.encode('utf-8')) > 72:
+            v = v.encode('utf-8')[:72].decode('utf-8', errors='ignore')
+        return v
     
     @field_validator('email')
     @classmethod
@@ -56,14 +59,12 @@ class Token(BaseModel):
 
 # Helper functions
 def verify_password(plain_password, hashed_password):
-    # bcrypt limits passwords to 72 bytes, truncate if necessary
-    password_bytes = plain_password.encode('utf-8')[:72]
-    return pwd_context.verify(password_bytes, hashed_password)
+    return bcrypt.checkpw(plain_password.encode('utf-8'), hashed_password)
 
 def get_password_hash(password):
-    # bcrypt limits passwords to 72 bytes, truncate if necessary
+    # bcrypt limits to 72 bytes, truncate if needed
     password_bytes = password.encode('utf-8')[:72]
-    return pwd_context.hash(password_bytes)
+    return bcrypt.hashpw(password_bytes, bcrypt.gensalt())
 
 def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
     to_encode = data.copy()
@@ -81,7 +82,7 @@ def get_user_by_email(db: Session, email: str):
 def get_user_by_username(db: Session, username: str):
     return db.query(User).filter(User.username == username).first()
 
-# Endpoints
+# Routes
 @router.post("/signup", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
 async def signup(user_data: UserCreate, db: Session = Depends(get_db)):
     try:
@@ -127,27 +128,35 @@ async def signup(user_data: UserCreate, db: Session = Depends(get_db)):
 
 @router.post("/login", response_model=Token)
 async def login(user_data: UserLogin, db: Session = Depends(get_db)):
-    # Find user by email
-    user = get_user_by_email(db, user_data.email)
-    
-    if not user or not verify_password(user_data.password, user.password_hash):
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Incorrect email or password",
-            headers={"WWW-Authenticate": "Bearer"},
+    try:
+        # Find user by email
+        user = get_user_by_email(db, user_data.email)
+        if not user:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Incorrect email or password"
+            )
+        
+        # Verify password
+        if not verify_password(user_data.password, user.password_hash):
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Incorrect email or password"
+            )
+        
+        # Create access token
+        access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+        access_token = create_access_token(
+            data={"sub": str(user.id), "email": user.email},
+            expires_delta=access_token_expires
         )
-    
-    if not user.is_active:
+        
+        return {"access_token": access_token, "token_type": "bearer"}
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"Login error: {str(e)}")
         raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="User account is disabled"
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Login failed: {str(e)}"
         )
-    
-    # Create access token
-    access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
-    access_token = create_access_token(
-        data={"sub": user.email, "user_id": user.id},
-        expires_delta=access_token_expires
-    )
-    
-    return {"access_token": access_token, "token_type": "bearer"}

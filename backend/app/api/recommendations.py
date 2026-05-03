@@ -31,6 +31,7 @@ async def get_recommendations(request: RecommendationRequest, db: Session = Depe
         {
             'title': job.title,
             'company': job.company,
+            'url': job.url,
             'tags': [tag.name for tag in job.tags]
         }
         for job in jobs

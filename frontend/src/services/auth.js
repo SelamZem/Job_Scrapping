@@ -33,3 +33,14 @@ export const getToken = () => {
 export const isAuthenticated = () => {
   return !!getToken()
 }
+
+export const getUserInfo = () => {
+  const token = getToken()
+  if (!token) return null
+  try {
+    const payload = JSON.parse(atob(token.split('.')[1]))
+    return { email: payload.email, id: payload.sub }
+  } catch {
+    return null
+  }
+}

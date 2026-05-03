@@ -1,6 +1,6 @@
 import { useState } from 'react'
-import { Sparkles, X, Lightbulb } from 'lucide-react'
-import { getRecommendations, getCareerAdvice } from '../services/api'
+import { Sparkles, X, ExternalLink } from 'lucide-react'
+import { getRecommendations } from '../services/api'
 
 function AIRecommendations({ jobs, onClose }) {
   const [userProfile, setUserProfile] = useState({
@@ -9,7 +9,6 @@ function AIRecommendations({ jobs, onClose }) {
     locations: ''
   })
   const [recommendations, setRecommendations] = useState([])
-  const [advice, setAdvice] = useState('')
   const [loading, setLoading] = useState(false)
 
   const handleGetRecommendations = async () => {
@@ -28,15 +27,6 @@ function AIRecommendations({ jobs, onClose }) {
       alert('Error getting recommendations. Please try again.')
     } finally {
       setLoading(false)
-    }
-  }
-
-  const handleGetAdvice = async (jobTitle) => {
-    try {
-      const response = await getCareerAdvice(jobTitle)
-      setAdvice(response.advice)
-    } catch (error) {
-      console.error('Error getting advice:', error)
     }
   }
 
@@ -106,39 +96,24 @@ function AIRecommendations({ jobs, onClose }) {
       </button>
 
       {recommendations.length > 0 && (
-        <div className="mb-6">
+        <div>
           <h4 className="text-sm font-medium text-slate-700 mb-3">Recommended Jobs</h4>
           <div className="space-y-2">
             {recommendations.map((rec, index) => (
-              <div
+              <a
                 key={index}
-                className="p-3 bg-accent rounded-lg flex items-center justify-between"
+                href={rec.url || '#'}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="p-3 bg-accent rounded-lg flex items-center justify-between hover:bg-accent/80 transition-colors block"
               >
                 <div>
                   <p className="font-medium text-slate-900">{rec.title}</p>
                   <p className="text-sm text-slate-600">{rec.company}</p>
                 </div>
-                <button
-                  onClick={() => handleGetAdvice(rec.title)}
-                  className="p-2 hover:bg-slate-200 rounded"
-                  title="Get career advice"
-                >
-                  <Lightbulb className="h-4 w-4 text-slate-600" />
-                </button>
-              </div>
+                <ExternalLink className="h-4 w-4 text-slate-500 flex-shrink-0" />
+              </a>
             ))}
-          </div>
-        </div>
-      )}
-
-      {advice && (
-        <div className="p-4 bg-primary/10 rounded-lg">
-          <div className="flex items-start space-x-2">
-            <Lightbulb className="h-5 w-5 text-primary mt-0.5" />
-            <div>
-              <h4 className="font-medium text-slate-900 mb-1">Career Advice</h4>
-              <p className="text-sm text-slate-700">{advice}</p>
-            </div>
           </div>
         </div>
       )}

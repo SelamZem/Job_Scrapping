@@ -7,7 +7,10 @@ load_dotenv()
 
 class AIService:
     def __init__(self):
-        self.client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+        self.client = OpenAI(
+            api_key=os.getenv("OPENAI_API_KEY"),
+            base_url="https://api.groq.com/openai/v1"
+        )
     
     def get_job_recommendations(self, user_profile: Dict, jobs: List[Dict], limit: int = 5) -> List[Dict]:
         """Get AI-powered job recommendations based on user profile"""
@@ -34,7 +37,7 @@ class AIService:
             """
             
             response = self.client.chat.completions.create(
-                model="gpt-3.5-turbo",
+                model="llama-3.3-70b-versatile",
                 messages=[
                     {"role": "system", "content": "You are a job recommendation assistant."},
                     {"role": "user", "content": prompt}
@@ -61,7 +64,8 @@ class AIService:
         return matched[:5]
     
     def _get_fallback_recommendations(self, jobs: List[Dict], limit: int) -> List[Dict]:
-        """Fallback recommendations when AI is unavailable"""
+        """Fallback recommendations when AI is unavailable - return recent jobs"""
+        # Return the most recent jobs (assuming database order is by date)
         return jobs[:limit]
     
     def get_career_advice(self, job_title: str) -> str:
@@ -71,7 +75,7 @@ class AIService:
         
         try:
             response = self.client.chat.completions.create(
-                model="gpt-3.5-turbo",
+                model="llama-3.3-70b-versatile",
                 messages=[
                     {"role": "system", "content": "You are a career advisor."},
                     {"role": "user", "content": f"Provide brief career advice for someone pursuing a {job_title} role."}

@@ -1,12 +1,12 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from app.api import jobs, recommendations, tags, auth
+from app.api import jobs, recommendations, tags, auth_new as auth
 from app.database import engine, Base
 from app.models.user import User  # Import User model to create table
 
 Base.metadata.create_all(bind=engine)
 
-app = FastAPI(title="Job Scrapping API", version="1.0.0")
+app = FastAPI(title="Care Jobs API", version="1.0.0")
 
 app.add_middleware(
     CORSMiddleware,

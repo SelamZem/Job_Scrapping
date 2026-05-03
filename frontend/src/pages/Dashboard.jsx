@@ -6,7 +6,7 @@ import SearchBar from '../components/SearchBar'
 import TagFilter from '../components/TagFilter'
 import AIRecommendations from '../components/AIRecommendations'
 import { getJobs, scrapeJobs, getTags } from '../services/api'
-import { isAuthenticated, logout } from '../services/auth'
+import { isAuthenticated, logout, getUserInfo } from '../services/auth'
 
 function Dashboard() {
   const [jobs, setJobs] = useState([])
@@ -117,7 +117,7 @@ function Dashboard() {
           <div className="flex items-center justify-between h-16">
             <div className="flex items-center space-x-3">
               <Briefcase className="h-8 w-8 text-primary" />
-              <h1 className="text-xl font-bold text-slate-900">Job Scrapping Platform</h1>
+              <h1 className="text-xl font-bold text-slate-900">Care Jobs</h1>
             </div>
             <div className="flex items-center space-x-4">
               <button
@@ -133,17 +133,25 @@ function Dashboard() {
               </button>
               {isAuthenticated() ? (
                 <>
-                  <div className="flex items-center space-x-2 text-slate-600">
-                    <User className="h-5 w-5" />
-                    <span className="hidden sm:inline">Profile</span>
+                  <div className="relative group">
+                    <button className="flex items-center space-x-2 text-slate-600 hover:text-primary transition-colors">
+                      <User className="h-5 w-5" />
+                      <span className="hidden sm:inline">Profile</span>
+                    </button>
+                    <div className="absolute right-0 top-full mt-2 w-56 bg-white rounded-lg shadow-lg border border-slate-200 py-2 hidden group-hover:block z-50">
+                      <div className="px-4 py-2 border-b border-slate-100">
+                        <p className="text-sm font-medium text-slate-900">{getUserInfo()?.username || 'User'}</p>
+                        <p className="text-xs text-slate-500">{getUserInfo()?.email || ''}</p>
+                      </div>
+                      <button
+                        onClick={handleLogout}
+                        className="w-full flex items-center space-x-2 px-4 py-2 text-slate-600 hover:text-red-600 hover:bg-red-50 transition-colors"
+                      >
+                        <LogOut className="h-4 w-4" />
+                        <span className="text-sm">Logout</span>
+                      </button>
+                    </div>
                   </div>
-                  <button
-                    onClick={handleLogout}
-                    className="flex items-center space-x-2 text-slate-600 hover:text-red-600 transition-colors"
-                  >
-                    <LogOut className="h-5 w-5" />
-                    <span className="hidden sm:inline">Logout</span>
-                  </button>
                 </>
               ) : (
                 <>
