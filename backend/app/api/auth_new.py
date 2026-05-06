@@ -60,7 +60,9 @@ def verify_password(plain_password, hashed_password):
 def get_password_hash(password):
     # bcrypt limits to 72 bytes, truncate if needed
     password_bytes = password.encode('utf-8')[:72]
-    return bcrypt.hashpw(password_bytes, bcrypt.gensalt())
+    hashed = bcrypt.hashpw(password_bytes, bcrypt.gensalt())
+    # Decode bytes to string for database storage
+    return hashed.decode('utf-8')
 
 def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
     to_encode = data.copy()
