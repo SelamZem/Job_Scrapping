@@ -10,7 +10,7 @@ import { isAuthenticated, logout, getUserInfo } from '../services/auth'
 
 function Dashboard() {
   const [jobs, setJobs] = useState([])
-  const [filteredJobs, setFilteredJobs] = useState([])
+  const [totalJobs, setTotalJobs] = useState(0)
   const [tags, setTags] = useState([])
   const [selectedTags, setSelectedTags] = useState([])
   const [loading, setLoading] = useState(false)
@@ -22,26 +22,23 @@ function Dashboard() {
   const navigate = useNavigate()
 
   useEffect(() => {
-    loadJobs()
+    loadJobs(currentPage)
     loadTags()
-  }, [])
+  }, [currentPage])
 
-  useEffect(() => {
-    filterJobs()
-    setCurrentPage(1)
-  }, [jobs, selectedTags, searchQuery])
+  // Client-side filtering removed - now using server-side pagination
 
   const handleLogout = () => {
     logout()
     navigate('/login')
   }
 
-  const loadJobs = async () => {
+  const loadJobs = async (page = 1) => {
     setLoading(true)
     try {
-      const data = await getJobs()
-      setJobs(data)
-      setFilteredJobs(data)
+      const data = await getJobs(page, jobsPerPage)
+      setJobs(data.jobs)
+      setTotalJobs(data.total)
     } catch (error) {
       console.error('Error loading jobs:', error)
     } finally {
@@ -66,7 +63,8 @@ function Dashboard() {
     setLoading(true)
     try {
       await scrapeJobs(searchQuery, location)
-      await loadJobs()
+      await loadJobs(1)
+      setCurrentPage(1)
       await loadTags()
     } catch (error) {
       console.error('Error scraping jobs:', error)
@@ -74,27 +72,6 @@ function Dashboard() {
     } finally {
       setLoading(false)
     }
-  }
-
-  const filterJobs = () => {
-    let filtered = jobs
-
-    if (selectedTags.length > 0) {
-      filtered = filtered.filter(job =>
-        job.tags.some(tag => selectedTags.includes(tag))
-      )
-    }
-
-    if (searchQuery) {
-      const query = searchQuery.toLowerCase()
-      filtered = filtered.filter(job =>
-        job.title.toLowerCase().includes(query) ||
-        job.company.toLowerCase().includes(query) ||
-        job.description.toLowerCase().includes(query)
-      )
-    }
-
-    setFilteredJobs(filtered)
   }
 
   const toggleTag = (tagName) => {
@@ -105,12 +82,13 @@ function Dashboard() {
     )
   }
 
-  const indexOfLastJob = currentPage * jobsPerPage
-  const indexOfFirstJob = indexOfLastJob - jobsPerPage
-  const currentJobs = filteredJobs.slice(indexOfFirstJob, indexOfLastJob)
-  const totalPages = Math.ceil(filteredJobs.length / jobsPerPage)
+  const totalPages = Math.ceil(totalJobs / jobsPerPage)
 
-  const paginate = (pageNumber) => setCurrentPage(pageNumber)
+  const paginate = (pageNumber) => {
+    if (pageNumber >= 1 && pageNumber <= totalPages) {
+      setCurrentPage(pageNumber)
+    }
+  }
 
   return (
     <div className="min-h-screen bg-slate-50">
@@ -223,7 +201,7 @@ function Dashboard() {
               <div className="flex items-center space-x-2">
                 <Search className="h-4 w-4 sm:h-5 sm:w-5 text-slate-400" />
                 <span className="text-slate-600 text-sm sm:text-base">
-                  {filteredJobs.length} jobs found
+                  {totalJobs} jobs found
                 </span>
               </div>
             </div>
@@ -238,7 +216,7 @@ function Dashboard() {
                   Fetching from 6 job sources
                 </p>
               </div>
-            ) : currentJobs.length === 0 ? (
+            ) : jobs.length === 0 ? (
               <div className="text-center py-12">
                 <Briefcase className="h-12 w-12 text-slate-300 mx-auto mb-4" />
                 <h3 className="text-lg font-medium text-slate-900 mb-2">
@@ -251,7 +229,7 @@ function Dashboard() {
             ) : (
               <>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {currentJobs.map((job) => (
+                  {jobs.map((job) => (
                     <JobCard key={job.id} job={job} />
                   ))}
                 </div>

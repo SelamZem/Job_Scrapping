@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 from typing import List, Optional
 from app.database import get_db
 from app.models.job import Job
-from app.scrapers import RemotiveAPIScraper, ArbeitnowAPIScraper, RSSWeWorkRemotelyScraper, RSSRemoteOKScraper, LandingJobsScraper, SampleDataScraper
+from app.scrapers import RemotiveAPIScraper, ArbeitnowAPIScraper, RSSWeWorkRemotelyScraper, RSSRemoteOKScraper, LandingJobsScraper, GitHubJobsScraper, StackOverflowScraper, AuthenticJobsScraper, EuroJobsScraper
 from app.services import TagService
 from pydantic import BaseModel, Field
 
@@ -24,23 +24,31 @@ class JobResponse(BaseModel):
     source: str
     tags: List[str] = Field(default_factory=list)
 
-@router.get("/", response_model=List[JobResponse])
-async def get_jobs(db: Session = Depends(get_db), skip: int = 0, limit: int = 1000):
+@router.get("/")
+async def get_jobs(db: Session = Depends(get_db), skip: int = 0, limit: int = 12):
+    # Get total count for pagination
+    total_count = db.query(Job).count()
+    
+    # Get paginated jobs
     jobs = db.query(Job).offset(skip).limit(limit).all()
-    return [
-        JobResponse(
-            id=job.id,
-            title=job.title,
-            company=job.company,
-            location=job.location,
-            description=job.description,
-            salary=job.salary,
-            url=job.url,
-            source=job.source,
-            tags=[tag.name for tag in job.tags]
-        )
-        for job in jobs
-    ]
+    
+    return {
+        "total": total_count,
+        "jobs": [
+            JobResponse(
+                id=job.id,
+                title=job.title,
+                company=job.company,
+                location=job.location,
+                description=job.description,
+                salary=job.salary,
+                url=job.url,
+                source=job.source,
+                tags=[tag.name for tag in job.tags]
+            )
+            for job in jobs
+        ]
+    }
 
 @router.post("/scrape")
 async def scrape_jobs(request: JobSearchRequest, db: Session = Depends(get_db)):
@@ -50,10 +58,12 @@ async def scrape_jobs(request: JobSearchRequest, db: Session = Depends(get_db)):
         ('Arbeitnow', ArbeitnowAPIScraper()),
         ('We Work Remotely RSS', RSSWeWorkRemotelyScraper()),
         ('RemoteOK RSS', RSSRemoteOKScraper()),
-        ('Landing.jobs', LandingJobsScraper())
+        ('Landing.jobs', LandingJobsScraper()),
+        ('GitHub Jobs', GitHubJobsScraper()),
+        ('Stack Overflow', StackOverflowScraper()),
+        ('Authentic Jobs', AuthenticJobsScraper()),
+        ('EuroJobs', EuroJobsScraper())
     ]
-    
-    fallback_scraper = SampleDataScraper()
     
     tag_service = TagService(db)
     saved_jobs = []
@@ -91,37 +101,10 @@ async def scrape_jobs(request: JobSearchRequest, db: Session = Depends(get_db)):
             print(f"Error with {source_name} scraper: {e}")
             continue
     
-    # If no jobs from APIs, use sample data
-    if jobs_from_real_scrapers == 0:
-        print("\n=== No jobs from APIs, using sample data ===")
-        try:
-            jobs_data = fallback_scraper.scrape_jobs(request.query, request.location)
-            
-            for job_data in jobs_data:
-                job_data['source'] = 'sample'
-                existing_job = db.query(Job).filter(Job.url == job_data['url']).first()
-                if existing_job:
-                    continue
-                
-                job = Job(**job_data)
-                db.add(job)
-                db.commit()
-                db.refresh(job)
-                
-                tags = tag_service.extract_tags_from_job(job)
-                job.tags = tags
-                db.commit()
-                
-                saved_jobs.append(job)
-                print(f"  Saved sample: {job.title} at {job.company}")
-                
-        except Exception as e:
-            print(f"Error with sample data scraper: {e}")
-    
     if sources_used:
         source_type = f"{', '.join(sources_used)} (real APIs)"
     else:
-        source_type = "sample data"
+        source_type = "no sources available"
     
     return {"message": f"Scraped and saved {len(saved_jobs)} jobs from {source_type}", "count": len(saved_jobs)}
 

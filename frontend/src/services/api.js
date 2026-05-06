@@ -2,8 +2,9 @@ import axios from 'axios'
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || '/api'
 
-export const getJobs = async () => {
-  const response = await axios.get(`${API_BASE_URL}/jobs/?limit=1000`)
+export const getJobs = async (page = 1, limit = 12) => {
+  const skip = (page - 1) * limit
+  const response = await axios.get(`${API_BASE_URL}/jobs/?skip=${skip}&limit=${limit}`)
   return response.data
 }
 

@@ -4,7 +4,7 @@ from app.api import jobs, recommendations, tags, auth_new as auth
 from app.database import engine, Base, SessionLocal
 from app.models.user import User  # Import User model to create table
 from app.models.job import Job
-from app.scrapers import RemotiveAPIScraper, ArbeitnowAPIScraper, RSSWeWorkRemotelyScraper, RSSRemoteOKScraper, LandingJobsScraper, SampleDataScraper, LinkedInScraper
+from app.scrapers import RemotiveAPIScraper, ArbeitnowAPIScraper, RSSWeWorkRemotelyScraper, RSSRemoteOKScraper, LandingJobsScraper, LinkedInScraper, GitHubJobsScraper, StackOverflowScraper, AuthenticJobsScraper, EuroJobsScraper
 from app.services import TagService
 from contextlib import asynccontextmanager
 
@@ -24,9 +24,12 @@ async def lifespan(app: FastAPI):
             ('We Work Remotely RSS', RSSWeWorkRemotelyScraper()),
             ('RemoteOK RSS', RSSRemoteOKScraper()),
             ('Landing.jobs', LandingJobsScraper()),
-            ('LinkedIn', LinkedInScraper())
+            ('LinkedIn', LinkedInScraper()),
+            ('GitHub Jobs', GitHubJobsScraper()),
+            ('Stack Overflow', StackOverflowScraper()),
+            ('Authentic Jobs', AuthenticJobsScraper()),
+            ('EuroJobs', EuroJobsScraper())
         ]
-        fallback_scraper = SampleDataScraper()
         tag_service = TagService(db)
         jobs_saved = 0
 
@@ -53,26 +56,7 @@ async def lifespan(app: FastAPI):
                 print(f"Error with {source_name} scraper: {e}")
                 continue
 
-        if jobs_saved == 0:
-            try:
-                jobs_data = fallback_scraper.scrape_jobs("software engineer", "remote")
-                for job_data in jobs_data:
-                    job_data['source'] = 'sample'
-                    existing_job = db.query(Job).filter(Job.url == job_data['url']).first()
-                    if existing_job:
-                        continue
-                    job = Job(**job_data)
-                    db.add(job)
-                    db.commit()
-                    db.refresh(job)
-                    tags = tag_service.extract_tags_from_job(job)
-                    job.tags = tags
-                    db.commit()
-                    jobs_saved += 1
-            except Exception as e:
-                print(f"Error with sample data scraper: {e}")
-
-        print(f"Auto-scraped {jobs_saved} new jobs on startup")
+        print(f"Auto-scraped {jobs_saved} new jobs from real APIs on startup")
     finally:
         db.close()
     yield
