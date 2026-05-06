@@ -4,7 +4,7 @@ import { User, Lock, Briefcase, ArrowRight } from 'lucide-react'
 import { login } from '../services/auth'
 
 function Login() {
-  const [email, setEmail] = useState('')
+  const [emailOrUsername, setEmailOrUsername] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
@@ -16,7 +16,7 @@ function Login() {
     setLoading(true)
 
     try {
-      await login(email, password)
+      await login(emailOrUsername, password)
       navigate('/')
     } catch (err) {
       setError(err.response?.data?.detail || 'Login failed')
@@ -48,16 +48,16 @@ function Login() {
           <form onSubmit={handleSubmit} className="space-y-6">
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-2">
-                Email
+                Email or Username
               </label>
               <div className="relative">
                 <User className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-slate-400" />
                 <input
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
+                  type="text"
+                  value={emailOrUsername}
+                  onChange={(e) => setEmailOrUsername(e.target.value)}
                   className="w-full pl-10 pr-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary transition-colors"
-                  placeholder="Enter your email"
+                  placeholder="Enter your email or username"
                   required
                 />
               </div>

@@ -37,15 +37,8 @@ class UserCreate(BaseModel):
         return v.lower()
 
 class UserLogin(BaseModel):
-    email: str
+    email_or_username: str
     password: str
-    
-    @field_validator('email')
-    @classmethod
-    def validate_email(cls, v):
-        if '@' not in v or '.' not in v:
-            raise ValueError('Invalid email address')
-        return v.lower()
 
 class UserResponse(BaseModel):
     id: int
@@ -132,25 +125,28 @@ async def signup(user_data: UserCreate, db: Session = Depends(get_db)):
 @router.post("/login", response_model=Token)
 async def login(user_data: UserLogin, db: Session = Depends(get_db)):
     try:
-        # Find user by email
-        user = get_user_by_email(db, user_data.email)
+        # Find user by email or username
+        user = get_user_by_email(db, user_data.email_or_username)
+        if not user:
+            user = get_user_by_username(db, user_data.email_or_username)
+        
         if not user:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Incorrect email or password"
+                detail="Incorrect username/email or password"
             )
         
         # Verify password
         if not verify_password(user_data.password, user.password_hash):
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Incorrect email or password"
+                detail="Incorrect username/email or password"
             )
         
         # Create access token
         access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
         access_token = create_access_token(
-            data={"sub": str(user.id), "email": user.email},
+            data={"sub": str(user.id), "email": user.email, "username": user.username},
             expires_delta=access_token_expires
         )
         
