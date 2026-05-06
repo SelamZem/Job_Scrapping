@@ -4,7 +4,7 @@ from app.api import jobs, recommendations, tags, auth_new as auth
 from app.database import engine, Base, SessionLocal
 from app.models.user import User  # Import User model to create table
 from app.models.job import Job
-from app.scrapers import RemotiveAPIScraper, ArbeitnowAPIScraper, RSSWeWorkRemotelyScraper, RSSRemoteOKScraper, LandingJobsScraper, SampleDataScraper, RemoteCoScraper, WorkingNomadsScraper, WellfoundScraper
+from app.scrapers import RemotiveAPIScraper, ArbeitnowAPIScraper, RSSWeWorkRemotelyScraper, RSSRemoteOKScraper, LandingJobsScraper, SampleDataScraper, LinkedInScraper
 from app.services import TagService
 from contextlib import asynccontextmanager
 
@@ -23,7 +23,8 @@ async def lifespan(app: FastAPI):
             ('Arbeitnow', ArbeitnowAPIScraper()),
             ('We Work Remotely RSS', RSSWeWorkRemotelyScraper()),
             ('RemoteOK RSS', RSSRemoteOKScraper()),
-            ('Landing.jobs', LandingJobsScraper())
+            ('Landing.jobs', LandingJobsScraper()),
+            ('LinkedIn', LinkedInScraper())
         ]
         fallback_scraper = SampleDataScraper()
         tag_service = TagService(db)
