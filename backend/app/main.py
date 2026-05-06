@@ -31,7 +31,8 @@ async def lifespan(app: FastAPI):
 
             for source_name, scraper in api_scrapers:
                 try:
-                    jobs_data = scraper.scrape_jobs("software engineer", "remote", max_pages=1)
+                    # Scrape without filtering to get all available jobs
+                    jobs_data = scraper.scrape_jobs("", "", max_pages=1)
                     if jobs_data:
                         for job_data in jobs_data:
                             job_data['source'] = source_name.lower().replace(' ', '_')
@@ -46,8 +47,7 @@ async def lifespan(app: FastAPI):
                             job.tags = tags
                             db.commit()
                             jobs_saved += 1
-                        if jobs_saved > 0:
-                            break
+                        print(f"Saved {len(jobs_data)} jobs from {source_name}")
                 except Exception as e:
                     print(f"Error with {source_name} scraper: {e}")
                     continue
