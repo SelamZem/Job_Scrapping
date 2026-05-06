@@ -11,9 +11,9 @@ export const signup = async (email, username, password) => {
   return response.data
 }
 
-export const login = async (email, password) => {
+export const login = async (emailOrUsername, password) => {
   const response = await axios.post(`${API_BASE_URL}/auth/login`, {
-    email,
+    email_or_username: emailOrUsername,
     password
   })
   if (response.data.access_token) {
@@ -39,7 +39,7 @@ export const getUserInfo = () => {
   if (!token) return null
   try {
     const payload = JSON.parse(atob(token.split('.')[1]))
-    return { email: payload.email, id: payload.sub }
+    return { email: payload.email, username: payload.username, id: payload.sub }
   } catch {
     return null
   }
