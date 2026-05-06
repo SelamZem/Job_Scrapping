@@ -59,6 +59,9 @@ class Token(BaseModel):
 
 # Helper functions
 def verify_password(plain_password, hashed_password):
+    # Ensure hashed_password is bytes (it comes as string from database)
+    if isinstance(hashed_password, str):
+        hashed_password = hashed_password.encode('utf-8')
     return bcrypt.checkpw(plain_password.encode('utf-8'), hashed_password)
 
 def get_password_hash(password):
