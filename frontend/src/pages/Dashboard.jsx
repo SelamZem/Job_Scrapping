@@ -113,30 +113,30 @@ function Dashboard() {
     <div className="min-h-screen bg-slate-50">
       {/* Header */}
       <header className="bg-white border-b border-slate-200 sticky top-0 z-50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-16">
-            <div className="flex items-center space-x-3">
-              <Briefcase className="h-8 w-8 text-primary" />
-              <h1 className="text-xl font-bold text-slate-900">Care Jobs</h1>
+        <div className="max-w-7xl mx-auto px-3 sm:px-4 lg:px-8">
+          <div className="flex items-center justify-between h-14 sm:h-16">
+            <div className="flex items-center space-x-2 sm:space-x-3">
+              <Briefcase className="h-6 w-6 sm:h-8 sm:w-8 text-primary" />
+              <h1 className="text-lg sm:text-xl font-bold text-slate-900">Care Jobs</h1>
             </div>
-            <div className="flex items-center space-x-4">
+            <div className="flex items-center space-x-2 sm:space-x-4">
               <button
                 onClick={() => setShowRecommendations(!showRecommendations)}
-                className={`flex items-center space-x-2 px-4 py-2 rounded-lg transition-colors ${
+                className={`flex items-center space-x-1 sm:space-x-2 px-2 sm:px-4 py-2 rounded-lg transition-colors ${
                   showRecommendations
                     ? 'bg-purple-100 text-purple-700'
                     : 'text-slate-600 hover:bg-slate-100'
                 }`}
               >
                 <Sparkles className="h-4 w-4" />
-                <span className="hidden sm:inline">AI Recommendations</span>
+                <span className="hidden sm:inline text-sm">AI</span>
               </button>
               {isAuthenticated() ? (
                 <>
                   <div className="relative group">
-                    <button className="flex items-center space-x-2 text-slate-600 hover:text-primary transition-colors">
-                      <User className="h-5 w-5" />
-                      <span className="hidden sm:inline">Profile</span>
+                    <button className="flex items-center space-x-1 sm:space-x-2 text-slate-600 hover:text-primary transition-colors">
+                      <User className="h-4 w-4 sm:h-5 sm:w-5" />
+                      <span className="hidden sm:inline text-sm">Profile</span>
                     </button>
                     <div className="absolute right-0 top-full mt-2 w-56 bg-white rounded-lg shadow-lg border border-slate-200 py-2 hidden group-hover:block z-50">
                       <div className="px-4 py-2 border-b border-slate-100">
@@ -157,16 +157,16 @@ function Dashboard() {
                 <>
                   <Link
                     to="/login"
-                    className="flex items-center space-x-2 text-slate-600 hover:text-primary transition-colors"
+                    className="flex items-center space-x-1 sm:space-x-2 text-slate-600 hover:text-primary transition-colors"
                   >
-                    <LogIn className="h-5 w-5" />
-                    <span className="hidden sm:inline">Login</span>
+                    <LogIn className="h-4 w-4 sm:h-5 sm:w-5" />
+                    <span className="hidden sm:inline text-sm">Login</span>
                   </Link>
                   <Link
                     to="/signup"
-                    className="flex items-center space-x-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors"
+                    className="flex items-center space-x-1 sm:space-x-2 px-2 sm:px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors text-sm"
                   >
-                    <UserPlus className="h-5 w-5" />
+                    <UserPlus className="h-4 w-4 sm:h-5 sm:w-5" />
                     <span className="hidden sm:inline">Sign Up</span>
                   </Link>
                 </>
@@ -185,9 +185,9 @@ function Dashboard() {
       )}
 
       {/* Main Content */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <main className="max-w-7xl mx-auto px-3 sm:px-4 lg:px-8 py-4 sm:py-8">
         {/* Search Section */}
-        <div className="mb-8">
+        <div className="mb-4 sm:mb-8">
           <SearchBar
             searchQuery={searchQuery}
             setSearchQuery={setSearchQuery}
@@ -198,13 +198,13 @@ function Dashboard() {
           />
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-4 sm:gap-8">
           {/* Sidebar */}
-          <div className="lg:col-span-1">
-            <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
-              <div className="flex items-center space-x-2 mb-4">
-                <Filter className="h-5 w-5 text-primary" />
-                <h2 className="font-semibold text-slate-900">Filters</h2>
+          <div className="lg:col-span-1 order-2 lg:order-1">
+            <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-4 sm:p-6">
+              <div className="flex items-center space-x-2 mb-3 sm:mb-4">
+                <Filter className="h-4 w-4 sm:h-5 sm:w-5 text-primary" />
+                <h2 className="font-semibold text-slate-900 text-sm sm:text-base">Filters</h2>
               </div>
               <TagFilter
                 tags={tags}
@@ -215,11 +215,11 @@ function Dashboard() {
           </div>
 
           {/* Job Listings */}
-          <div className="lg:col-span-3">
-            <div className="flex items-center justify-between mb-6">
+          <div className="lg:col-span-3 order-1 lg:order-2">
+            <div className="flex items-center justify-between mb-4 sm:mb-6">
               <div className="flex items-center space-x-2">
-                <Search className="h-5 w-5 text-slate-400" />
-                <span className="text-slate-600">
+                <Search className="h-4 w-4 sm:h-5 sm:w-5 text-slate-400" />
+                <span className="text-slate-600 text-sm sm:text-base">
                   {filteredJobs.length} jobs found
                 </span>
               </div>
@@ -245,21 +245,21 @@ function Dashboard() {
 
                 {/* Pagination */}
                 {totalPages > 1 && (
-                  <div className="flex justify-center items-center space-x-2 mt-8">
+                  <div className="flex justify-center items-center space-x-2 sm:space-x-4 mt-6 sm:mt-8">
                     <button
                       onClick={() => paginate(currentPage - 1)}
                       disabled={currentPage === 1}
-                      className="px-4 py-2 border border-slate-300 rounded-lg text-slate-600 hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                      className="px-3 py-2 sm:px-4 sm:py-2 border border-slate-300 rounded-lg text-slate-600 hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed text-xs sm:text-sm"
                     >
                       Previous
                     </button>
-                    <span className="text-slate-600">
-                      Page {currentPage} of {totalPages}
+                    <span className="text-slate-600 text-xs sm:text-sm">
+                      {currentPage} / {totalPages}
                     </span>
                     <button
                       onClick={() => paginate(currentPage + 1)}
                       disabled={currentPage === totalPages}
-                      className="px-4 py-2 border border-slate-300 rounded-lg text-slate-600 hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                      className="px-3 py-2 sm:px-4 sm:py-2 border border-slate-300 rounded-lg text-slate-600 hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed text-xs sm:text-sm"
                     >
                       Next
                     </button>
