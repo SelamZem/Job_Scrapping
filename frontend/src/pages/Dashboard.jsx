@@ -198,9 +198,9 @@ function Dashboard() {
           />
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-4 sm:gap-8">
+        <div className="flex flex-col lg:flex-row gap-4 sm:gap-8">
           {/* Sidebar */}
-          <div className="lg:col-span-1 order-2 lg:order-1">
+          <div className="lg:w-64 lg:flex-shrink-0 order-2 lg:order-1">
             <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-4 sm:p-6">
               <div className="flex items-center space-x-2 mb-3 sm:mb-4">
                 <Filter className="h-4 w-4 sm:h-5 sm:w-5 text-primary" />
@@ -215,7 +215,7 @@ function Dashboard() {
           </div>
 
           {/* Job Listings */}
-          <div className="lg:col-span-3 order-1 lg:order-2">
+          <div className="flex-1 order-1 lg:order-2">
             <div className="flex items-center justify-between mb-4 sm:mb-6">
               <div className="flex items-center space-x-2">
                 <Search className="h-4 w-4 sm:h-5 sm:w-5 text-slate-400" />
@@ -245,21 +245,82 @@ function Dashboard() {
 
                 {/* Pagination */}
                 {totalPages > 1 && (
-                  <div className="flex justify-center items-center space-x-2 sm:space-x-4 mt-6 sm:mt-8">
+                  <div className="flex justify-center items-center flex-wrap gap-1 sm:gap-2 mt-6 sm:mt-8">
+                    {/* Previous Button */}
                     <button
                       onClick={() => paginate(currentPage - 1)}
                       disabled={currentPage === 1}
-                      className="px-3 py-2 sm:px-4 sm:py-2 border border-slate-300 rounded-lg text-slate-600 hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed text-xs sm:text-sm"
+                      className="px-2 py-1 sm:px-3 sm:py-2 border border-slate-300 rounded-lg text-slate-600 hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed text-xs sm:text-sm"
                     >
                       Previous
                     </button>
-                    <span className="text-slate-600 text-xs sm:text-sm">
-                      {currentPage} / {totalPages}
-                    </span>
+
+                    {/* Page Numbers */}
+                    {(() => {
+                      const pages = []
+                      const maxVisible = 3
+
+                      // Always show first page
+                      pages.push(1)
+
+                      // Calculate start and end of visible range around current page
+                      let start = Math.max(2, currentPage - 1)
+                      let end = Math.min(totalPages - 1, currentPage + 1)
+
+                      // Adjust if at the beginning
+                      if (currentPage <= 2) {
+                        end = Math.min(totalPages - 1, maxVisible)
+                      }
+                      // Adjust if at the end
+                      if (currentPage >= totalPages - 1) {
+                        start = Math.max(2, totalPages - maxVisible + 1)
+                      }
+
+                      // Add ellipsis after first page if needed
+                      if (start > 2) {
+                        pages.push('...')
+                      }
+
+                      // Add visible pages
+                      for (let i = start; i <= end; i++) {
+                        if (i > 1 && i < totalPages) {
+                          pages.push(i)
+                        }
+                      }
+
+                      // Add ellipsis before last page if needed
+                      if (end < totalPages - 1) {
+                        pages.push('...')
+                      }
+
+                      // Always show last page if more than 1 page
+                      if (totalPages > 1) {
+                        pages.push(totalPages)
+                      }
+
+                      return pages.map((pageNum, index) => (
+                        <button
+                          key={index}
+                          onClick={() => typeof pageNum === 'number' && paginate(pageNum)}
+                          disabled={pageNum === '...'}
+                          className={`px-2 py-1 sm:px-3 sm:py-2 rounded-lg text-xs sm:text-sm font-medium transition-colors ${
+                            currentPage === pageNum
+                              ? 'bg-primary text-white'
+                              : pageNum === '...'
+                              ? 'text-slate-400 cursor-default'
+                              : 'border border-slate-300 text-slate-600 hover:bg-slate-50'
+                          }`}
+                        >
+                          {pageNum}
+                        </button>
+                      ))
+                    })()}
+
+                    {/* Next Button */}
                     <button
                       onClick={() => paginate(currentPage + 1)}
                       disabled={currentPage === totalPages}
-                      className="px-3 py-2 sm:px-4 sm:py-2 border border-slate-300 rounded-lg text-slate-600 hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed text-xs sm:text-sm"
+                      className="px-2 py-1 sm:px-3 sm:py-2 border border-slate-300 rounded-lg text-slate-600 hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed text-xs sm:text-sm"
                     >
                       Next
                     </button>
