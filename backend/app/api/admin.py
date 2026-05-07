@@ -3,11 +3,16 @@ from typing import Dict
 from datetime import datetime
 import time
 from app.services.scraper_monitor import scraper_monitor
-from app.api.auth_new import require_admin, get_password_hash
+from app.api.auth_new import get_password_hash
 from app.models.user import User
 from app.database import SessionLocal
 
 router = APIRouter(tags=["admin"])
+
+def require_admin():
+    """Lazy import to avoid circular dependency"""
+    from app.api.auth_new import require_admin as _require_admin
+    return _require_admin
 
 @router.post("/setup-admin")
 async def setup_admin():
@@ -37,12 +42,12 @@ async def setup_admin():
         db.close()
 
 @router.get("/health")
-async def get_scraper_health(current_user: User = Depends(require_admin)) -> Dict:
+async def get_scraper_health(current_user = Depends(require_admin())) -> Dict:
     """Get scraper health status - admin endpoint"""
     return scraper_monitor.get_health_summary()
 
 @router.post("/scrapers/test")
-async def test_scrapers(current_user: User = Depends(require_admin)) -> Dict:
+async def test_scrapers(current_user = Depends(require_admin())) -> Dict:
     """Test all scrapers and return results"""
     from app.scrapers import (
         RemotiveAPIScraper, ArbeitnowAPIScraper, RSSWeWorkRemotelyScraper,
