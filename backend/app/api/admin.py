@@ -3,10 +3,38 @@ from typing import Dict
 from datetime import datetime
 import time
 from app.services.scraper_monitor import scraper_monitor
-from app.api.auth_new import require_admin
+from app.api.auth_new import require_admin, get_password_hash
 from app.models.user import User
+from app.database import SessionLocal
 
 router = APIRouter(tags=["admin"])
+
+@router.post("/setup-admin")
+async def setup_admin():
+    """Create default admin user - call once then remove this endpoint"""
+    db = SessionLocal()
+    try:
+        admin = db.query(User).filter(User.username == "admin").first()
+        if admin:
+            return {"message": "Admin already exists", "username": admin.username}
+
+        admin_user = User(
+            username="admin",
+            email="admin@carejobs.com",
+            password_hash=get_password_hash("admin123"),
+            role="admin",
+            is_active=True
+        )
+        db.add(admin_user)
+        db.commit()
+
+        return {
+            "message": "Admin created! Login with: admin / admin123",
+            "username": "admin",
+            "password": "admin123"
+        }
+    finally:
+        db.close()
 
 @router.get("/health")
 async def get_scraper_health(current_user: User = Depends(require_admin)) -> Dict:
