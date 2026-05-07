@@ -4,7 +4,7 @@ from datetime import datetime
 import time
 from app.services.scraper_monitor import scraper_monitor
 from app.api.auth_new import require_admin
-from app.database import SessionLocal
+from app.models.user import User
 
 router = APIRouter(tags=["admin"])
 
