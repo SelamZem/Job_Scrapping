@@ -1,10 +1,34 @@
 import axios from 'axios'
+import { getToken } from './auth'
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || '/api'
 
-export const getJobs = async (page = 1, limit = 12) => {
+// Create axios instance for default export
+const api = axios.create({
+  baseURL: API_BASE_URL
+})
+
+// Add auth token to all requests
+api.interceptors.request.use((config) => {
+  const token = getToken()
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`
+  }
+  return config
+})
+
+export default api
+
+export const getJobs = async (page = 1, limit = 12, search = '', location = '', tag = '') => {
   const skip = (page - 1) * limit
-  const response = await axios.get(`${API_BASE_URL}/jobs/?skip=${skip}&limit=${limit}`)
+  const params = new URLSearchParams()
+  params.append('skip', skip)
+  params.append('limit', limit)
+  if (search) params.append('search', search)
+  if (location) params.append('location', location)
+  if (tag) params.append('tag', tag)
+  
+  const response = await axios.get(`${API_BASE_URL}/jobs/?${params.toString()}`)
   return response.data
 }
 

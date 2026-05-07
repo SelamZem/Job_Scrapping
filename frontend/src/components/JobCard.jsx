@@ -1,6 +1,40 @@
-import { Building2, MapPin, ExternalLink, Tag as TagIcon } from 'lucide-react'
+import { Building2, MapPin, ExternalLink, Tag as TagIcon, Heart } from 'lucide-react'
+import { useState, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
+import { isBookmarked, toggleBookmark, canBookmark } from '../services/bookmarks'
 
 function JobCard({ job }) {
+  const [bookmarked, setBookmarked] = useState(false)
+  const navigate = useNavigate()
+
+  // Check bookmark status on mount
+  useEffect(() => {
+    setBookmarked(isBookmarked(job.id))
+  }, [job.id])
+
+  // Handle bookmark toggle
+  const handleBookmark = (e) => {
+    e.preventDefault()
+    e.stopPropagation()
+    
+    // Check if user can bookmark (logged in)
+    if (!canBookmark()) {
+      alert('Please log in to save jobs')
+      navigate('/login')
+      return
+    }
+    
+    const result = toggleBookmark(job.id)
+    if (result.error) {
+      alert(result.error)
+      if (result.error.includes('log in')) {
+        navigate('/login')
+      }
+      return
+    }
+    setBookmarked(result.isBookmarked)
+  }
+
   // Strip HTML tags from text
   const stripHtml = (html) => {
     if (!html) return ''
@@ -16,33 +50,46 @@ function JobCard({ job }) {
       href={job.url}
       target="_blank"
       rel="noopener noreferrer"
-      className="block bg-white rounded-xl shadow-sm border border-slate-200 p-4 sm:p-6 hover:shadow-md hover:border-primary transition-all cursor-pointer"
+      className="block bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 p-4 sm:p-6 hover:shadow-md hover:border-primary dark:hover:border-slate-600 transition-all cursor-pointer"
     >
       <div className="flex items-start justify-between mb-3 sm:mb-4">
         <div className="flex-1 min-w-0">
-          <h3 className="text-base sm:text-lg font-semibold text-slate-900 mb-1 hover:text-primary transition-colors line-clamp-2">{job.title}</h3>
-          <div className="flex items-center text-slate-600 text-xs sm:text-sm">
+          <h3 className="text-base sm:text-lg font-semibold text-slate-900 dark:text-white mb-1 hover:text-primary dark:hover:text-primary transition-colors line-clamp-2">{job.title}</h3>
+          <div className="flex items-center text-slate-600 dark:text-slate-400 text-xs sm:text-sm">
             <Building2 className="h-3 w-3 sm:h-4 sm:w-4 mr-1 flex-shrink-0" />
             <span className="truncate">{job.company}</span>
           </div>
         </div>
-        <span className="px-2 py-1 bg-secondary text-secondary-foreground text-xs rounded-full flex-shrink-0 ml-2">
-          {job.source}
-        </span>
+        <div className="flex items-center space-x-2">
+          <button
+            onClick={handleBookmark}
+            className={`p-1.5 rounded-full transition-colors ${
+              bookmarked 
+                ? 'text-red-500 hover:bg-red-50 dark:hover:bg-red-900/30' 
+                : 'text-slate-400 dark:text-slate-500 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/30'
+            }`}
+            title={bookmarked ? 'Remove from saved jobs' : 'Save job'}
+          >
+            <Heart className={`h-4 w-4 sm:h-5 sm:w-5 ${bookmarked ? 'fill-current' : ''}`} />
+          </button>
+          <span className="px-2 py-1 bg-secondary dark:bg-slate-700 text-secondary-foreground dark:text-slate-300 text-xs rounded-full flex-shrink-0">
+            {job.source}
+          </span>
+        </div>
       </div>
 
-      <div className="flex items-center text-slate-600 text-xs sm:text-sm mb-3 sm:mb-4">
+      <div className="flex items-center text-slate-600 dark:text-slate-400 text-xs sm:text-sm mb-3 sm:mb-4">
         <MapPin className="h-3 w-3 sm:h-4 sm:w-4 mr-1 flex-shrink-0" />
         <span className="truncate">{job.location}</span>
       </div>
 
       {job.salary && (
-        <div className="text-xs sm:text-sm text-slate-600 mb-3 sm:mb-4">
+        <div className="text-xs sm:text-sm text-slate-600 dark:text-slate-400 mb-3 sm:mb-4">
           <span className="font-medium">Salary:</span> {job.salary}
         </div>
       )}
 
-      <p className="text-slate-600 text-xs sm:text-sm mb-3 sm:mb-4 line-clamp-2 sm:line-clamp-3">
+      <p className="text-slate-600 dark:text-slate-400 text-xs sm:text-sm mb-3 sm:mb-4 line-clamp-2 sm:line-clamp-3">
         {cleanDescription}
       </p>
 
@@ -58,7 +105,7 @@ function JobCard({ job }) {
             </span>
           ))}
           {job.tags.length > 3 && (
-            <span className="text-xs text-slate-500">+{job.tags.length - 3} more</span>
+            <span className="text-xs text-slate-500 dark:text-slate-400">+{job.tags.length - 3} more</span>
           )}
         </div>
       )}

@@ -1,12 +1,14 @@
 import { useState, useEffect } from 'react'
-import { Search, Filter, Briefcase, Sparkles, User, LogOut, LogIn, UserPlus } from 'lucide-react'
+import { Search, Filter, Briefcase, Sparkles, User, LogOut, LogIn, UserPlus, Heart, Moon, Sun, Shield } from 'lucide-react'
 import { Link, useNavigate } from 'react-router-dom'
 import JobCard from '../components/JobCard'
 import SearchBar from '../components/SearchBar'
 import TagFilter from '../components/TagFilter'
 import AIRecommendations from '../components/AIRecommendations'
 import { getJobs, scrapeJobs, getTags } from '../services/api'
-import { isAuthenticated, logout, getUserInfo } from '../services/auth'
+import { isAuthenticated, logout, getUserInfo, isAdmin } from '../services/auth'
+import { getBookmarks } from '../services/bookmarks'
+import { useDarkMode } from '../context/DarkModeContext'
 
 function Dashboard() {
   const [jobs, setJobs] = useState([])
@@ -17,26 +19,32 @@ function Dashboard() {
   const [searchQuery, setSearchQuery] = useState('')
   const [location, setLocation] = useState('')
   const [showRecommendations, setShowRecommendations] = useState(false)
+  const [showSavedJobs, setShowSavedJobs] = useState(false)
   const [currentPage, setCurrentPage] = useState(1)
   const jobsPerPage = 12
   const navigate = useNavigate()
+  const { isDark, toggleDark } = useDarkMode()
 
+  // Load jobs when page or filters change
   useEffect(() => {
-    loadJobs(currentPage)
-    loadTags()
-  }, [currentPage])
+    loadJobs(currentPage, searchQuery, location, selectedTags[0] || '')
+  }, [currentPage, searchQuery, location, selectedTags])
 
-  // Client-side filtering removed - now using server-side pagination
+  // Initial load
+  useEffect(() => {
+    loadTags()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   const handleLogout = () => {
     logout()
     navigate('/login')
   }
 
-  const loadJobs = async (page = 1) => {
+  const loadJobs = async (page = 1, search = '', locationFilter = '', tagFilter = '') => {
     setLoading(true)
     try {
-      const data = await getJobs(page, jobsPerPage)
+      const data = await getJobs(page, jobsPerPage, search, locationFilter, tagFilter)
       setJobs(data.jobs)
       setTotalJobs(data.total)
     } catch (error) {
@@ -80,7 +88,32 @@ function Dashboard() {
         ? prev.filter(t => t !== tagName)
         : [...prev, tagName]
     )
+    // Reset to page 1 when tag changes
+    setCurrentPage(1)
   }
+
+  // Debounced search handler
+  const handleSearchChange = (value) => {
+    setSearchQuery(value)
+    setCurrentPage(1)
+    setShowSavedJobs(false)
+  }
+
+  const handleLocationChange = (value) => {
+    setLocation(value)
+    setCurrentPage(1)
+    setShowSavedJobs(false)
+  }
+
+  // Get saved jobs
+  const getSavedJobs = () => {
+    const bookmarkedIds = getBookmarks()
+    return jobs.filter(job => bookmarkedIds.includes(job.id))
+  }
+
+  // Display jobs (either all or saved)
+  const displayJobs = showSavedJobs ? getSavedJobs() : jobs
+  const displayTotal = showSavedJobs ? getSavedJobs().length : totalJobs
 
   const totalPages = Math.ceil(totalJobs / jobsPerPage)
 
@@ -91,22 +124,35 @@ function Dashboard() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50">
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-900">
       {/* Header */}
-      <header className="bg-white border-b border-slate-200 sticky top-0 z-50">
+      <header className="bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 sticky top-0 z-50">
         <div className="max-w-7xl mx-auto px-3 sm:px-4 lg:px-8">
           <div className="flex items-center justify-between h-14 sm:h-16">
             <div className="flex items-center space-x-2 sm:space-x-3">
               <Briefcase className="h-6 w-6 sm:h-8 sm:w-8 text-primary" />
-              <h1 className="text-lg sm:text-xl font-bold text-slate-900">Care Jobs</h1>
+              <h1 className="text-lg sm:text-xl font-bold text-slate-900 dark:text-white">Care Jobs</h1>
             </div>
             <div className="flex items-center space-x-2 sm:space-x-4">
+              {isAuthenticated() && (
+                <button
+                  onClick={() => setShowSavedJobs(!showSavedJobs)}
+                  className={`flex items-center space-x-1 sm:space-x-2 px-2 sm:px-4 py-2 rounded-lg transition-colors ${
+                    showSavedJobs
+                      ? 'bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300'
+                      : 'text-slate-600 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800'
+                  }`}
+                >
+                  <Heart className={`h-4 w-4 ${showSavedJobs ? 'fill-current' : ''}`} />
+                  <span className="hidden sm:inline text-sm">Saved</span>
+                </button>
+              )}
               <button
                 onClick={() => setShowRecommendations(!showRecommendations)}
                 className={`flex items-center space-x-1 sm:space-x-2 px-2 sm:px-4 py-2 rounded-lg transition-colors ${
                   showRecommendations
-                    ? 'bg-purple-100 text-purple-700'
-                    : 'text-slate-600 hover:bg-slate-100'
+                    ? 'bg-purple-100 text-purple-700 dark:bg-purple-900 dark:text-purple-300'
+                    : 'text-slate-600 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800'
                 }`}
               >
                 <Sparkles className="h-4 w-4" />
@@ -123,7 +169,17 @@ function Dashboard() {
                       <div className="px-4 py-2 border-b border-slate-100">
                         <p className="text-sm font-medium text-slate-900">{getUserInfo()?.username || 'User'}</p>
                         <p className="text-xs text-slate-500">{getUserInfo()?.email || ''}</p>
+                        <p className="text-xs text-slate-400 mt-1">Role: {getUserInfo()?.role || 'user'}</p>
                       </div>
+                      {isAdmin() && (
+                        <Link
+                          to="/admin"
+                          className="flex items-center space-x-2 px-4 py-2 text-slate-600 hover:text-primary hover:bg-slate-50 transition-colors"
+                        >
+                          <Shield className="h-4 w-4" />
+                          <span className="text-sm">Admin Dashboard</span>
+                        </Link>
+                      )}
                       <button
                         onClick={handleLogout}
                         className="w-full flex items-center space-x-2 px-4 py-2 text-slate-600 hover:text-red-600 hover:bg-red-50 transition-colors"
@@ -152,6 +208,14 @@ function Dashboard() {
                   </Link>
                 </>
               )}
+              {/* Dark Mode Toggle - Far Right */}
+              <button
+                onClick={toggleDark}
+                className="ml-2 flex items-center justify-center w-10 h-10 rounded-full bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-600 transition-colors"
+                title={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
+              >
+                {isDark ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
+              </button>
             </div>
           </div>
         </div>
@@ -171,9 +235,9 @@ function Dashboard() {
         <div className="mb-4 sm:mb-8">
           <SearchBar
             searchQuery={searchQuery}
-            setSearchQuery={setSearchQuery}
+            setSearchQuery={handleSearchChange}
             location={location}
-            setLocation={setLocation}
+            setLocation={handleLocationChange}
             onSearch={handleScrape}
             loading={loading}
           />
@@ -182,10 +246,10 @@ function Dashboard() {
         <div className="flex flex-col lg:flex-row gap-4 sm:gap-8">
           {/* Sidebar */}
           <div className="lg:w-64 lg:flex-shrink-0 order-2 lg:order-1">
-            <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-4 sm:p-6">
+            <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 p-4 sm:p-6">
               <div className="flex items-center space-x-2 mb-3 sm:mb-4">
                 <Filter className="h-4 w-4 sm:h-5 sm:w-5 text-primary" />
-                <h2 className="font-semibold text-slate-900 text-sm sm:text-base">Filters</h2>
+                <h2 className="font-semibold text-slate-900 dark:text-white text-sm sm:text-base">Filters</h2>
               </div>
               <TagFilter
                 tags={tags}
@@ -199,9 +263,9 @@ function Dashboard() {
           <div className="flex-1 order-1 lg:order-2">
             <div className="flex items-center justify-between mb-4 sm:mb-6">
               <div className="flex items-center space-x-2">
-                <Search className="h-4 w-4 sm:h-5 sm:w-5 text-slate-400" />
-                <span className="text-slate-600 text-sm sm:text-base">
-                  {totalJobs} jobs found
+                <Search className="h-4 w-4 sm:h-5 sm:w-5 text-slate-400 dark:text-slate-500" />
+                <span className="text-slate-600 dark:text-slate-400 text-sm sm:text-base">
+                  {showSavedJobs ? `${displayJobs.length} saved jobs` : `${displayTotal} jobs found`}
                 </span>
               </div>
             </div>
@@ -229,7 +293,7 @@ function Dashboard() {
             ) : (
               <>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {jobs.map((job) => (
+                  {displayJobs.map((job) => (
                     <JobCard key={job.id} job={job} />
                   ))}
                 </div>
@@ -241,7 +305,7 @@ function Dashboard() {
                     <button
                       onClick={() => paginate(currentPage - 1)}
                       disabled={currentPage === 1}
-                      className="px-2 py-1 sm:px-3 sm:py-2 border border-slate-300 rounded-lg text-slate-600 hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed text-xs sm:text-sm"
+                      className="px-2 py-1 sm:px-3 sm:py-2 border border-slate-300 dark:border-slate-600 rounded-lg text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed text-xs sm:text-sm"
                     >
                       Previous
                     </button>
@@ -298,8 +362,8 @@ function Dashboard() {
                             currentPage === pageNum
                               ? 'bg-primary text-white'
                               : pageNum === '...'
-                              ? 'text-slate-400 cursor-default'
-                              : 'border border-slate-300 text-slate-600 hover:bg-slate-50'
+                              ? 'text-slate-400 dark:text-slate-500 cursor-default'
+                              : 'border border-slate-300 dark:border-slate-600 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700'
                           }`}
                         >
                           {pageNum}
@@ -311,7 +375,7 @@ function Dashboard() {
                     <button
                       onClick={() => paginate(currentPage + 1)}
                       disabled={currentPage === totalPages}
-                      className="px-2 py-1 sm:px-3 sm:py-2 border border-slate-300 rounded-lg text-slate-600 hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed text-xs sm:text-sm"
+                      className="px-2 py-1 sm:px-3 sm:py-2 border border-slate-300 dark:border-slate-600 rounded-lg text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed text-xs sm:text-sm"
                     >
                       Next
                     </button>

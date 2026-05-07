@@ -39,8 +39,18 @@ export const getUserInfo = () => {
   if (!token) return null
   try {
     const payload = JSON.parse(atob(token.split('.')[1]))
-    return { email: payload.email, username: payload.username, id: payload.sub }
+    return { 
+      email: payload.email, 
+      username: payload.username, 
+      id: payload.sub,
+      role: payload.role || 'user'
+    }
   } catch {
     return null
   }
+}
+
+export const isAdmin = () => {
+  const userInfo = getUserInfo()
+  return userInfo?.role === 'admin'
 }
