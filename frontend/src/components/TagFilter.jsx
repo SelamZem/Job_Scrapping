@@ -3,6 +3,9 @@ import { useState, useEffect } from 'react'
 
 function TagFilter({ tags, selectedTags, onToggleTag, onApplyFilters, onClearFilters }) {
   const categories = [...new Set(tags.map(tag => tag.category))].filter(category => category !== 'role' && category !== 'industry')
+
+  // Helper to capitalize first letter
+  const capitalizeFirst = (str) => str.charAt(0).toUpperCase() + str.slice(1)
   const [isOpen, setIsOpen] = useState(false)
   const [tempSelected, setTempSelected] = useState(selectedTags)
 
@@ -21,6 +24,7 @@ function TagFilter({ tags, selectedTags, onToggleTag, onApplyFilters, onClearFil
 
   const handleApply = () => {
     onApplyFilters?.(tempSelected)
+    setIsOpen(false)  // Close dropdown after applying
   }
 
   const handleClear = () => {
@@ -89,8 +93,8 @@ function TagFilter({ tags, selectedTags, onToggleTag, onApplyFilters, onClearFil
               <div className="p-2">
                 {categories.map(category => (
                   <div key={category} className="mb-3">
-                    <h4 className="text-xs font-medium text-slate-500 dark:text-slate-400 mb-2 uppercase tracking-wide">
-                      {category}
+                    <h4 className="text-xs font-medium text-slate-500 dark:text-slate-400 mb-2 tracking-wide">
+                      {capitalizeFirst(category)}
                     </h4>
                     <div className="space-y-1">
                       {tags
@@ -125,7 +129,7 @@ function TagFilter({ tags, selectedTags, onToggleTag, onApplyFilters, onClearFil
       <button
         onClick={handleApply}
         disabled={tempSelected.length === 0 && selectedTags.length === 0}
-        className="w-full px-4 py-2.5 text-sm font-medium bg-primary text-white rounded-lg hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+        className="w-full px-4 py-2.5 text-sm font-medium bg-primary text-white rounded-lg hover:bg-primary/90 active:bg-primary/80 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-150 ease-in-out transform active:scale-[0.98] shadow-sm hover:shadow-md"
       >
         Apply Filters {tempSelected.length > 0 && `(${tempSelected.length})`}
       </button>
