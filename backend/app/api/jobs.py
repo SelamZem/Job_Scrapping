@@ -5,6 +5,8 @@ from app.database import get_db
 from app.models.job import Job
 from app.scrapers import RemotiveAPIScraper, ArbeitnowAPIScraper, RSSWeWorkRemotelyScraper, RSSRemoteOKScraper, LandingJobsScraper, GitHubJobsScraper, StackOverflowScraper, AuthenticJobsScraper, EuroJobsScraper
 from app.services import TagService
+from app.services.scraper_monitor import scraper_monitor
+import time
 from pydantic import BaseModel, Field
 
 router = APIRouter()
@@ -72,8 +74,18 @@ async def scrape_jobs(request: JobSearchRequest, db: Session = Depends(get_db)):
     
     for source_name, scraper in api_scrapers:
         print(f"\n=== Scraping from {source_name} ===")
+        start_time = time.time()
         try:
             jobs_data = scraper.scrape_jobs(request.query, request.location, max_pages=1)
+            duration = time.time() - start_time
+            
+            # Record in scraper monitor
+            scraper_monitor.record_run(
+                name=source_name,
+                success=len(jobs_data) > 0,
+                jobs_found=len(jobs_data),
+                duration=round(duration, 2)
+            )
             
             if jobs_data:
                 sources_used.append(source_name)
@@ -98,6 +110,15 @@ async def scrape_jobs(request: JobSearchRequest, db: Session = Depends(get_db)):
                     print(f"  Saved: {job.title} at {job.company}")
             
         except Exception as e:
+            duration = time.time() - start_time
+            # Record failure in scraper monitor
+            scraper_monitor.record_run(
+                name=source_name,
+                success=False,
+                jobs_found=0,
+                error_message=str(e)[:200],
+                duration=round(duration, 2)
+            )
             print(f"Error with {source_name} scraper: {e}")
             continue
     

@@ -18,15 +18,19 @@ async def test_scrapers(current_user: User = Depends(require_admin)) -> Dict:
     """Test all scrapers and return results"""
     from app.scrapers import (
         RemotiveAPIScraper, ArbeitnowAPIScraper, RSSWeWorkRemotelyScraper,
-        RSSRemoteOKScraper, LandingJobsScraper, EuroJobsScraper
+        RSSRemoteOKScraper, LandingJobsScraper, GitHubJobsScraper,
+        StackOverflowScraper, AuthenticJobsScraper, EuroJobsScraper
     )
-    
+
     scrapers = [
         ("Remotive", RemotiveAPIScraper()),
         ("Arbeitnow", ArbeitnowAPIScraper()),
-        ("We Work Remotely", RSSWeWorkRemotelyScraper()),
-        ("RemoteOK", RSSRemoteOKScraper()),
+        ("We Work Remotely RSS", RSSWeWorkRemotelyScraper()),
+        ("RemoteOK RSS", RSSRemoteOKScraper()),
         ("Landing.jobs", LandingJobsScraper()),
+        ("GitHub Jobs", GitHubJobsScraper()),
+        ("Stack Overflow", StackOverflowScraper()),
+        ("Authentic Jobs", AuthenticJobsScraper()),
         ("EuroJobs", EuroJobsScraper())
     ]
     

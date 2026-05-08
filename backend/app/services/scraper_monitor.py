@@ -49,10 +49,24 @@ class ScraperHealth:
 
 class ScraperMonitor:
     """Monitors scraper health and performance"""
-    
+
     def __init__(self):
         self.scrapers: Dict[str, ScraperHealth] = {}
         self.max_history = 10
+        # Pre-register all scrapers so they show up in dashboard immediately
+        scraper_names = [
+            "Remotive",
+            "Arbeitnow",
+            "We Work Remotely RSS",
+            "RemoteOK RSS",
+            "Landing.jobs",
+            "GitHub Jobs",
+            "Stack Overflow",
+            "Authentic Jobs",
+            "EuroJobs"
+        ]
+        for name in scraper_names:
+            self.register_scraper(name)
     
     def register_scraper(self, name: str) -> ScraperHealth:
         if name not in self.scrapers:
