@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy.orm import Session
 from pydantic import BaseModel, field_validator
 import bcrypt
@@ -14,6 +15,7 @@ router = APIRouter()
 SECRET_KEY = "your-secret-key-here-change-in-production"
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 30
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/auth/login")
 
 # Pydantic models
 class UserCreate(BaseModel):
@@ -80,6 +82,32 @@ def get_user_by_email(db: Session, email: str):
 def get_user_by_username(db: Session, username: str):
     return db.query(User).filter(User.username == username).first()
 
+async def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)):
+    credentials_exception = HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Could not validate credentials",
+        headers={"WWW-Authenticate": "Bearer"},
+    )
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        user_id: str = payload.get("sub")
+        if user_id is None:
+            raise credentials_exception
+    except JWTError:
+        raise credentials_exception
+    user = db.query(User).filter(User.id == int(user_id)).first()
+    if user is None:
+        raise credentials_exception
+    return user
+
+async def require_admin(current_user: User = Depends(get_current_user)):
+    if current_user.role != "admin":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Admin access required"
+        )
+    return current_user
+
 # Routes
 @router.post("/signup", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
 async def signup(user_data: UserCreate, db: Session = Depends(get_db)):
@@ -145,10 +173,10 @@ async def login(user_data: UserLogin, db: Session = Depends(get_db)):
                 detail="Incorrect username/email or password"
             )
         
-        # Create access token
+        # Create access token with role included
         access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
         access_token = create_access_token(
-            data={"sub": str(user.id), "email": user.email, "username": user.username},
+            data={"sub": str(user.id), "email": user.email, "username": user.username, "role": user.role or "user"},
             expires_delta=access_token_expires
         )
         
