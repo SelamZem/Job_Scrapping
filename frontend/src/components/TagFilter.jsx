@@ -1,7 +1,7 @@
 import { Filter, X } from 'lucide-react'
 
 function TagFilter({ tags, selectedTags, onToggleTag }) {
-  const categories = [...new Set(tags.map(tag => tag.category))]
+  const categories = [...new Set(tags.map(tag => tag.category))].filter(category => category !== 'role' && category !== 'industry')
 
   return (
     <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6 mb-8">
