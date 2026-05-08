@@ -1,5 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
+from sqlalchemy import func, desc
 from typing import List, Optional
 from app.database import get_db
 from app.models.job import Job
@@ -31,8 +32,10 @@ async def get_jobs(db: Session = Depends(get_db), skip: int = 0, limit: int = 12
     # Get total count for pagination
     total_count = db.query(Job).count()
 
-    # Get paginated jobs, sorted by scraped_date (most recent first)
-    jobs = db.query(Job).order_by(Job.scraped_date.desc()).offset(skip).limit(limit).all()
+    # Get paginated jobs, sorted by posted_date (most recent first), fallback to scraped_date
+    jobs = db.query(Job).order_by(
+        desc(func.coalesce(Job.posted_date, Job.scraped_date))
+    ).offset(skip).limit(limit).all()
 
     return {
         "total": total_count,
