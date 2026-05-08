@@ -104,6 +104,16 @@ function Dashboard() {
     setCurrentPage(1)
   }
 
+  const handleApplyFilters = (tags) => {
+    setSelectedTags(tags)
+    setCurrentPage(1)
+  }
+
+  const handleClearFilters = () => {
+    setSelectedTags([])
+    setCurrentPage(1)
+  }
+
   // Debounced search handler
   const handleSearchChange = (value) => {
     setSearchQuery(value)
@@ -273,6 +283,8 @@ function Dashboard() {
                 tags={tags}
                 selectedTags={selectedTags}
                 onToggleTag={toggleTag}
+                onApplyFilters={handleApplyFilters}
+                onClearFilters={handleClearFilters}
               />
             </div>
           </div>

@@ -1,16 +1,30 @@
-import { Building2, MapPin, ExternalLink, Tag as TagIcon, Heart } from 'lucide-react'
+import { Building2, MapPin, ExternalLink, Tag as TagIcon, Heart, Eye } from 'lucide-react'
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { isBookmarked, toggleBookmark, canBookmark } from '../services/bookmarks'
+import { isJobVisited, markJobVisited } from '../services/visited'
 
 function JobCard({ job }) {
   const [bookmarked, setBookmarked] = useState(false)
+  const [visited, setVisited] = useState(false)
   const navigate = useNavigate()
+
+  // Check visited status on mount
+  useEffect(() => {
+    setVisited(isJobVisited(job.id))
+  }, [job.id])
 
   // Check bookmark status on mount
   useEffect(() => {
     setBookmarked(isBookmarked(job.id))
   }, [job.id])
+
+  // Handle job link click - mark as visited
+  const handleJobClick = (e) => {
+    markJobVisited(job.id)
+    setVisited(true)
+    // Let the default link behavior continue (open in new tab)
+  }
 
   // Handle bookmark toggle
   const handleBookmark = (e) => {
@@ -50,11 +64,22 @@ function JobCard({ job }) {
       href={job.url}
       target="_blank"
       rel="noopener noreferrer"
-      className="block bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 p-4 sm:p-6 hover:shadow-md hover:border-primary dark:hover:border-slate-600 transition-all cursor-pointer"
+      onClick={handleJobClick}
+      className={`block rounded-xl shadow-sm border p-4 sm:p-6 hover:shadow-md transition-all cursor-pointer ${visited ? 'bg-slate-50 dark:bg-slate-800/70 border-slate-200 dark:border-slate-700' : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 hover:border-primary dark:hover:border-slate-600'}`}
     >
       <div className="flex items-start justify-between mb-3 sm:mb-4">
         <div className="flex-1 min-w-0">
-          <h3 className="text-base sm:text-lg font-semibold text-slate-900 dark:text-white mb-1 hover:text-primary dark:hover:text-primary transition-colors line-clamp-2">{job.title}</h3>
+          <div className="flex items-center gap-2 mb-1">
+            <h3 className={`text-base sm:text-lg font-semibold mb-0 hover:text-primary dark:hover:text-primary transition-colors line-clamp-2 ${visited ? 'text-slate-500 dark:text-slate-400' : 'text-slate-900 dark:text-white'}`}>
+              {job.title}
+            </h3>
+            {visited && (
+              <span className="inline-flex items-center px-2 py-0.5 bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-400 text-xs rounded-full shrink-0">
+                <Eye className="h-3 w-3 mr-1" />
+                Visited
+              </span>
+            )}
+          </div>
           <div className="flex items-center text-slate-600 dark:text-slate-400 text-xs sm:text-sm">
             <Building2 className="h-3 w-3 sm:h-4 sm:w-4 mr-1 flex-shrink-0" />
             <span className="truncate">{job.company}</span>
