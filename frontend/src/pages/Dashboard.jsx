@@ -288,17 +288,14 @@ function Dashboard() {
               </div>
             </div>
 
-            {loading ? (
+            {loading && jobs.length === 0 ? (
               <div className="text-center py-12">
                 <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
                 <h3 className="text-lg font-medium text-slate-900 mb-2">
-                  Loading jobs...
+                  Loading...
                 </h3>
-                <p className="text-slate-600">
-                  Fetching from 6 job sources
-                </p>
               </div>
-            ) : jobs.length === 0 ? (
+            ) : jobs.length === 0 && !loading ? (
               <div className="text-center py-12">
                 <Briefcase className="h-12 w-12 text-slate-300 mx-auto mb-4" />
                 <h3 className="text-lg font-medium text-slate-900 mb-2">
@@ -314,6 +311,22 @@ function Dashboard() {
                   {displayJobs.map((job) => (
                     <JobCard key={job.id} job={job} />
                   ))}
+                  {loading && (
+                    <>
+                      {[...Array(3)].map((_, i) => (
+                        <div key={i} className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 p-4 sm:p-6">
+                          <div className="animate-pulse">
+                            <div className="h-4 bg-slate-200 dark:bg-slate-700 rounded w-3/4 mb-2"></div>
+                            <div className="h-3 bg-slate-200 dark:bg-slate-700 rounded w-1/2 mb-4"></div>
+                            <div className="space-y-2">
+                              <div className="h-2 bg-slate-200 dark:bg-slate-700 rounded"></div>
+                              <div className="h-2 bg-slate-200 dark:bg-slate-700 rounded w-5/6"></div>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </>
+                  )}
                 </div>
 
                 {/* Pagination */}
