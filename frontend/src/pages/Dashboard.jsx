@@ -20,6 +20,7 @@ function Dashboard() {
   const [location, setLocation] = useState('')
   const [showRecommendations, setShowRecommendations] = useState(false)
   const [showSavedJobs, setShowSavedJobs] = useState(false)
+  const [showProfileMenu, setShowProfileMenu] = useState(false)
   const [currentPage, setCurrentPage] = useState(1)
   const jobsPerPage = 12
   const navigate = useNavigate()
@@ -29,6 +30,17 @@ function Dashboard() {
   useEffect(() => {
     loadJobs(currentPage, searchQuery, location, selectedTags[0] || '')
   }, [currentPage, searchQuery, location, selectedTags])
+
+  // Close profile menu when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (showProfileMenu && !event.target.closest('.profile-menu-container')) {
+        setShowProfileMenu(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [showProfileMenu])
 
   // Initial load
   useEffect(() => {
@@ -160,34 +172,40 @@ function Dashboard() {
               </button>
               {isAuthenticated() ? (
                 <>
-                  <div className="relative group">
-                    <button className="flex items-center space-x-1 sm:space-x-2 text-slate-600 hover:text-primary transition-colors">
+                  <div className="relative profile-menu-container">
+                    <button
+                      onClick={() => setShowProfileMenu(!showProfileMenu)}
+                      className="flex items-center space-x-1 sm:space-x-2 text-slate-600 hover:text-primary transition-colors"
+                    >
                       <User className="h-4 w-4 sm:h-5 sm:w-5" />
                       <span className="hidden sm:inline text-sm">Profile</span>
                     </button>
-                    <div className="absolute right-0 top-full mt-2 w-56 bg-white rounded-lg shadow-lg border border-slate-200 py-2 hidden group-hover:block z-50">
-                      <div className="px-4 py-2 border-b border-slate-100">
-                        <p className="text-sm font-medium text-slate-900">{getUserInfo()?.username || 'User'}</p>
-                        <p className="text-xs text-slate-500">{getUserInfo()?.email || ''}</p>
-                        <p className="text-xs text-slate-400 mt-1">Role: {getUserInfo()?.role || 'user'}</p>
-                      </div>
-                      {isAdmin() && (
-                        <Link
-                          to="/admin"
-                          className="flex items-center space-x-2 px-4 py-2 text-slate-600 hover:text-primary hover:bg-slate-50 transition-colors"
+                    {showProfileMenu && (
+                      <div className="absolute right-0 top-full mt-2 w-56 bg-white dark:bg-slate-800 rounded-lg shadow-lg border border-slate-200 dark:border-slate-700 py-2 z-50">
+                        <div className="px-4 py-2 border-b border-slate-100 dark:border-slate-700">
+                          <p className="text-sm font-medium text-slate-900 dark:text-white">{getUserInfo()?.username || 'User'}</p>
+                          <p className="text-xs text-slate-500 dark:text-slate-400">{getUserInfo()?.email || ''}</p>
+                          <p className="text-xs text-slate-400 dark:text-slate-500 mt-1">Role: {getUserInfo()?.role || 'user'}</p>
+                        </div>
+                        {isAdmin() && (
+                          <Link
+                            to="/admin"
+                            onClick={() => setShowProfileMenu(false)}
+                            className="flex items-center space-x-2 px-4 py-2 text-slate-600 dark:text-slate-300 hover:text-primary hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors"
+                          >
+                            <Shield className="h-4 w-4" />
+                            <span className="text-sm">Admin Dashboard</span>
+                          </Link>
+                        )}
+                        <button
+                          onClick={handleLogout}
+                          className="w-full flex items-center space-x-2 px-4 py-2 text-slate-600 dark:text-slate-300 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
                         >
-                          <Shield className="h-4 w-4" />
-                          <span className="text-sm">Admin Dashboard</span>
-                        </Link>
-                      )}
-                      <button
-                        onClick={handleLogout}
-                        className="w-full flex items-center space-x-2 px-4 py-2 text-slate-600 hover:text-red-600 hover:bg-red-50 transition-colors"
-                      >
-                        <LogOut className="h-4 w-4" />
-                        <span className="text-sm">Logout</span>
-                      </button>
-                    </div>
+                          <LogOut className="h-4 w-4" />
+                          <span className="text-sm">Logout</span>
+                        </button>
+                      </div>
+                    )}
                   </div>
                 </>
               ) : (
