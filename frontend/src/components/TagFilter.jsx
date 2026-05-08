@@ -72,10 +72,9 @@ function TagFilter({ tags, selectedTags, onToggleTag }) {
                           </label>
                         ))}
                       </div>
-                    ))}
-                  </div>
-                )}
-              </div>
+                    </div>
+                  ))}
+                </div>
             )}
           </div>
         )}
