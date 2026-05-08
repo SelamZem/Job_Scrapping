@@ -60,22 +60,17 @@ function JobCard({ job }) {
             <span className="truncate">{job.company}</span>
           </div>
         </div>
-        <div className="flex items-center space-x-2">
-          <button
-            onClick={handleBookmark}
-            className={`p-1.5 rounded-full transition-colors ${
-              bookmarked 
-                ? 'text-red-500 hover:bg-red-50 dark:hover:bg-red-900/30' 
-                : 'text-slate-400 dark:text-slate-500 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/30'
-            }`}
-            title={bookmarked ? 'Remove from saved jobs' : 'Save job'}
-          >
-            <Heart className={`h-4 w-4 sm:h-5 sm:w-5 ${bookmarked ? 'fill-current' : ''}`} />
-          </button>
-          <span className="px-2 py-1 bg-secondary dark:bg-slate-700 text-secondary-foreground dark:text-slate-300 text-xs rounded-full flex-shrink-0">
-            {job.source}
-          </span>
-        </div>
+        <button
+          onClick={handleBookmark}
+          className={`p-1.5 rounded-full transition-colors ${
+            bookmarked 
+              ? 'text-red-500 hover:bg-red-50 dark:hover:bg-red-900/30' 
+              : 'text-slate-400 dark:text-slate-500 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/30'
+          }`}
+          title={bookmarked ? 'Remove from saved jobs' : 'Save job'}
+        >
+          <Heart className={`h-4 w-4 sm:h-5 sm:w-5 ${bookmarked ? 'fill-current' : ''}`} />
+        </button>
       </div>
 
       <div className="flex items-center text-slate-600 dark:text-slate-400 text-xs sm:text-sm mb-3 sm:mb-4">
