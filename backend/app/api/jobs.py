@@ -28,10 +28,10 @@ class JobResponse(BaseModel):
 async def get_jobs(db: Session = Depends(get_db), skip: int = 0, limit: int = 12):
     # Get total count for pagination
     total_count = db.query(Job).count()
-    
-    # Get paginated jobs
-    jobs = db.query(Job).offset(skip).limit(limit).all()
-    
+
+    # Get paginated jobs, sorted by scraped_date (most recent first)
+    jobs = db.query(Job).order_by(Job.scraped_date.desc()).offset(skip).limit(limit).all()
+
     return {
         "total": total_count,
         "jobs": [
