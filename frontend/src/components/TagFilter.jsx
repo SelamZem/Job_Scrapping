@@ -9,7 +9,7 @@ function TagFilter({ tags, selectedTags, onToggleTag, onApplyFilters, onClearFil
   // Sync tempSelected when selectedTags changes externally
   useEffect(() => {
     setTempSelected(selectedTags)
-  }, [selectedTags, isOpen])
+  }, [selectedTags])
 
   const handleToggleTemp = (tagName) => {
     if (tempSelected.includes(tagName)) {
@@ -20,28 +20,37 @@ function TagFilter({ tags, selectedTags, onToggleTag, onApplyFilters, onClearFil
   }
 
   const handleApply = () => {
-    // Apply the temp selection to parent
     onApplyFilters?.(tempSelected)
-    setIsOpen(false)
   }
 
   const handleClear = () => {
     setTempSelected([])
     onClearFilters?.()
-    setIsOpen(false)
   }
 
   const handleClose = () => {
-    setTempSelected(selectedTags) // Reset to current selection
+    setTempSelected(selectedTags)
     setIsOpen(false)
   }
 
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (isOpen && !event.target.closest('.tag-filter-dropdown')) {
+        handleClose()
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [isOpen, selectedTags])
+
   return (
     <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 p-4 sm:p-6">
+      {/* Header */}
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center space-x-2">
           <Filter className="h-4 w-4 sm:h-5 sm:w-5 text-slate-600 dark:text-slate-400" />
-          <h3 className="text-base sm:text-lg font-semibold text-slate-900 dark:text-white">Filter by Skills</h3>
+          <h3 className="text-base sm:text-lg font-semibold text-slate-900 dark:text-white">Skills</h3>
         </div>
         {selectedTags.length > 0 && (
           <div className="flex items-center space-x-2">
@@ -58,21 +67,22 @@ function TagFilter({ tags, selectedTags, onToggleTag, onApplyFilters, onClearFil
         )}
       </div>
 
-      <div className="relative">
+      {/* Dropdown */}
+      <div className="relative tag-filter-dropdown mb-4">
         <button
           onClick={() => setIsOpen(!isOpen)}
           className="w-full flex items-center justify-between px-4 py-3 bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-600 transition-colors"
         >
-          <span className="text-sm text-slate-600 dark:text-slate-300">
-            {selectedTags.length > 0
-              ? selectedTags.join(', ')
+          <span className="text-sm text-slate-600 dark:text-slate-300 truncate">
+            {tempSelected.length > 0
+              ? tempSelected.join(', ')
               : 'Select skills to filter...'}
           </span>
           <ChevronDown className={`h-4 w-4 text-slate-500 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
         </button>
 
         {isOpen && (
-          <div className="absolute z-50 w-full mt-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg shadow-lg max-h-80 overflow-y-auto">
+          <div className="absolute z-50 w-full mt-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg shadow-lg max-h-64 overflow-y-auto">
             {categories.length === 0 ? (
               <p className="text-slate-500 dark:text-slate-400 text-sm p-4">No tags available. Scrape some jobs first!</p>
             ) : (
@@ -105,36 +115,20 @@ function TagFilter({ tags, selectedTags, onToggleTag, onApplyFilters, onClearFil
                     </div>
                   </div>
                 ))}
-
-                {/* Action Buttons */}
-                <div className="flex items-center justify-between pt-3 mt-2 border-t border-slate-200 dark:border-slate-700">
-                  <button
-                    onClick={handleClear}
-                    className="text-xs sm:text-sm text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200"
-                  >
-                    Clear all
-                  </button>
-                  <div className="flex items-center space-x-2">
-                    <button
-                      onClick={handleClose}
-                      className="px-3 py-1.5 text-xs sm:text-sm text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 rounded"
-                    >
-                      Cancel
-                    </button>
-                    <button
-                      onClick={handleApply}
-                      disabled={tempSelected.length === 0 && selectedTags.length === 0}
-                      className="px-3 py-1.5 text-xs sm:text-sm bg-primary text-white rounded hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      Apply ({tempSelected.length})
-                    </button>
-                  </div>
-                </div>
               </div>
             )}
           </div>
         )}
       </div>
+
+      {/* Apply Button - Always Visible */}
+      <button
+        onClick={handleApply}
+        disabled={tempSelected.length === 0 && selectedTags.length === 0}
+        className="w-full px-4 py-2.5 text-sm font-medium bg-primary text-white rounded-lg hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+      >
+        Apply Filters {tempSelected.length > 0 && `(${tempSelected.length})`}
+      </button>
     </div>
   )
 }
