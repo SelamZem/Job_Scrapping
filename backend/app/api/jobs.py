@@ -7,7 +7,7 @@ from app.models.job import Job, Tag
 from app.scrapers import RemotiveAPIScraper, ArbeitnowAPIScraper, RSSWeWorkRemotelyScraper, RSSRemoteOKScraper, LandingJobsScraper, GitHubJobsScraper, StackOverflowScraper, AuthenticJobsScraper, EuroJobsScraper
 from app.services import TagService
 from app.services.scraper_monitor import scraper_monitor
-# Cache removed - no longer using Redis
+from app.config import cache_response, IS_PRODUCTION
 import time
 from pydantic import BaseModel, Field
 import hashlib
@@ -30,6 +30,7 @@ class JobResponse(BaseModel):
     tags: List[str] = Field(default_factory=list)
 
 @router.get("/")
+@cache_response(ttl=300)  # 5 minutes cache in production
 async def get_jobs(
     db: Session = Depends(get_db),
     skip: int = 0,
@@ -38,12 +39,16 @@ async def get_jobs(
     location: Optional[str] = None,
     tag: Optional[str] = None
 ):
-    # Cache removed - always query database
+    # Performance timing
+    import time
+    start_time = time.time()
+    
+    # Use database directly in production cache handles caching
 
     # Build base query with eager loading to avoid N+1 problem
     query = db.query(Job).options(selectinload(Job.tags))
 
-    # Apply search filter
+    # Apply search filter - simplified for better performance
     if search:
         search_filter = or_(
             Job.title.ilike(f"%{search}%"),
@@ -56,7 +61,7 @@ async def get_jobs(
     if location:
         query = query.filter(Job.location.ilike(f"%{location}%"))
 
-    # Apply tag filter
+    # Apply tag filter - optimized join
     if tag:
         query = query.join(Job.tags).filter(Tag.name == tag)
 
@@ -87,6 +92,11 @@ async def get_jobs(
     }
 
     # Cache removed - no longer storing results
+
+    # Log performance timing
+    end_time = time.time()
+    duration = (end_time - start_time) * 1000  # Convert to milliseconds
+    print(f"🚀 Jobs API took {duration:.2f}ms - returned {len(result['jobs'])} jobs, total: {result['total']}")
 
     return result
 

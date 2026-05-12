@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 from typing import List, Optional
 from app.database import get_db
 from app.models.job import Tag
-# Cache removed - no longer using Redis
+from app.config import cache_response, IS_PRODUCTION
 from pydantic import BaseModel
 
 router = APIRouter()
@@ -14,8 +14,9 @@ class TagResponse(BaseModel):
     category: str
 
 @router.get("/", response_model=List[TagResponse])
+@cache_response(ttl=600)  # 10 minutes cache for tags
 async def get_tags(db: Session = Depends(get_db), category: Optional[str] = None):
-    # Cache removed - always query database
+    # Use database directly in production cache handles caching
 
     # Query database
     query = db.query(Tag)

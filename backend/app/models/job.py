@@ -21,7 +21,7 @@ class Job(Base):
     description = Column(Text, nullable=False)
     salary = Column(String(100), nullable=True)
     url = Column(String(500), nullable=False, unique=True)
-    source = Column(String(100), nullable=False)  # e.g., 'linkedin', 'indeed', 'glassdoor'
+    source = Column(String(100), nullable=False) 
     posted_date = Column(DateTime, nullable=True)
     scraped_date = Column(DateTime, server_default=func.now())
     

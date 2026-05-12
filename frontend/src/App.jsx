@@ -1,8 +1,9 @@
 import { Routes, Route } from 'react-router-dom'
+import Dashboard from './pages/Dashboard'
 import Login from './pages/Login'
 import Signup from './pages/Signup'
-import Dashboard from './pages/Dashboard'
 import AdminDashboard from './pages/AdminDashboard'
+import './App.css'
 
 function App() {
   return (

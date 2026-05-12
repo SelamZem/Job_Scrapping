@@ -20,6 +20,7 @@ api.interceptors.request.use((config) => {
 export default api
 
 export const getJobs = async (page = 1, limit = 12, search = '', location = '', tag = '') => {
+  const startTime = performance.now()
   const skip = (page - 1) * limit
   const params = new URLSearchParams()
   params.append('skip', skip)
@@ -29,6 +30,10 @@ export const getJobs = async (page = 1, limit = 12, search = '', location = '', 
   if (tag) params.append('tag', tag)
   
   const response = await axios.get(`${API_BASE_URL}/jobs/?${params.toString()}`)
+  const endTime = performance.now()
+  const duration = endTime - startTime
+  
+  console.log(`🚀 Frontend: getJobs took ${duration.toFixed(2)}ms`)
   return response.data
 }
 

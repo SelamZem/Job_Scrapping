@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from app.api import jobs, recommendations, tags, auth_new as auth, admin
+from app.api import jobs, recommendations, tags, auth_new as auth, admin, health
 from app.database import engine, Base, SessionLocal
 from app.models.user import User  # Import User model to create table
 from app.models.job import Job
@@ -92,6 +92,7 @@ app.include_router(recommendations.router, prefix="/api/recommendations", tags=[
 app.include_router(tags.router, prefix="/api/tags", tags=["tags"])
 app.include_router(auth.router, prefix="/api/auth", tags=["auth"])
 app.include_router(admin.router, prefix="/api/admin", tags=["admin"])
+app.include_router(health.router, prefix="/health", tags=["health"])
 
 @app.get("/")
 async def root():
