@@ -128,8 +128,7 @@ function TagFilter({ tags, selectedTags, onToggleTag, onApplyFilters, onClearFil
       {/* Apply Button - Always Visible */}
       <button
         onClick={handleApply}
-        disabled={tempSelected.length === 0 && selectedTags.length === 0}
-        className="w-full px-4 py-2.5 text-sm font-medium bg-primary text-white rounded-lg hover:bg-primary/90 active:bg-primary/80 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-150 ease-in-out transform active:scale-[0.98] shadow-sm hover:shadow-md"
+        className="w-full px-4 py-2.5 text-sm font-medium bg-primary text-white rounded-lg hover:bg-primary/90 active:bg-primary/80 transition-all duration-150 ease-in-out transform active:scale-[0.98] shadow-sm hover:shadow-md"
       >
         Apply Filters {tempSelected.length > 0 && `(${tempSelected.length})`}
       </button>

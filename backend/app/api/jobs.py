@@ -1,14 +1,16 @@
 from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy.orm import Session
-from sqlalchemy import func, desc
+from sqlalchemy.orm import Session, selectinload
+from sqlalchemy import func, desc, or_
 from typing import List, Optional
 from app.database import get_db
-from app.models.job import Job
+from app.models.job import Job, Tag
 from app.scrapers import RemotiveAPIScraper, ArbeitnowAPIScraper, RSSWeWorkRemotelyScraper, RSSRemoteOKScraper, LandingJobsScraper, GitHubJobsScraper, StackOverflowScraper, AuthenticJobsScraper, EuroJobsScraper
 from app.services import TagService
 from app.services.scraper_monitor import scraper_monitor
+# Cache removed - no longer using Redis
 import time
 from pydantic import BaseModel, Field
+import hashlib
 
 router = APIRouter()
 
@@ -28,16 +30,45 @@ class JobResponse(BaseModel):
     tags: List[str] = Field(default_factory=list)
 
 @router.get("/")
-async def get_jobs(db: Session = Depends(get_db), skip: int = 0, limit: int = 12):
-    # Get total count for pagination
-    total_count = db.query(Job).count()
+async def get_jobs(
+    db: Session = Depends(get_db),
+    skip: int = 0,
+    limit: int = 12,
+    search: Optional[str] = None,
+    location: Optional[str] = None,
+    tag: Optional[str] = None
+):
+    # Cache removed - always query database
 
-    # Get paginated jobs, sorted by posted_date (most recent first), fallback to scraped_date
-    jobs = db.query(Job).order_by(
+    # Build base query with eager loading to avoid N+1 problem
+    query = db.query(Job).options(selectinload(Job.tags))
+
+    # Apply search filter
+    if search:
+        search_filter = or_(
+            Job.title.ilike(f"%{search}%"),
+            Job.company.ilike(f"%{search}%"),
+            Job.description.ilike(f"%{search}%")
+        )
+        query = query.filter(search_filter)
+
+    # Apply location filter
+    if location:
+        query = query.filter(Job.location.ilike(f"%{location}%"))
+
+    # Apply tag filter
+    if tag:
+        query = query.join(Job.tags).filter(Tag.name == tag)
+
+    # Get total count for pagination
+    total_count = query.count()
+
+    # Get paginated jobs with eager loaded tags
+    jobs = query.order_by(
         desc(func.coalesce(Job.posted_date, Job.scraped_date))
     ).offset(skip).limit(limit).all()
 
-    return {
+    result = {
         "total": total_count,
         "jobs": [
             JobResponse(
@@ -49,11 +80,15 @@ async def get_jobs(db: Session = Depends(get_db), skip: int = 0, limit: int = 12
                 salary=job.salary,
                 url=job.url,
                 source=job.source,
-                tags=[tag.name for tag in job.tags]
+                tags=[tag.name for tag in job.tags]  # Now uses eager loaded tags
             )
             for job in jobs
         ]
     }
+
+    # Cache removed - no longer storing results
+
+    return result
 
 @router.post("/scrape")
 async def scrape_jobs(request: JobSearchRequest, db: Session = Depends(get_db)):
@@ -129,15 +164,18 @@ async def scrape_jobs(request: JobSearchRequest, db: Session = Depends(get_db)):
         source_type = f"{', '.join(sources_used)} (real APIs)"
     else:
         source_type = "no sources available"
-    
+
+    # Cache removed - no longer invalidating cache
+
     return {"message": f"Scraped and saved {len(saved_jobs)} jobs from {source_type}", "count": len(saved_jobs)}
 
 @router.get("/{job_id}", response_model=JobResponse)
 async def get_job(job_id: int, db: Session = Depends(get_db)):
-    job = db.query(Job).filter(Job.id == job_id).first()
+    # Use eager loading to avoid N+1 query
+    job = db.query(Job).options(selectinload(Job.tags)).filter(Job.id == job_id).first()
     if not job:
         raise HTTPException(status_code=404, detail="Job not found")
-    
+
     return JobResponse(
         id=job.id,
         title=job.title,
@@ -147,5 +185,5 @@ async def get_job(job_id: int, db: Session = Depends(get_db)):
         salary=job.salary,
         url=job.url,
         source=job.source,
-        tags=[tag.name for tag in job.tags]
+        tags=[tag.name for tag in job.tags]  # Uses eager loaded tags
     )

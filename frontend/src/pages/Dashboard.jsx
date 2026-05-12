@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { Search, Filter, Briefcase, Sparkles, User, LogOut, LogIn, UserPlus, Heart, Moon, Sun, Shield } from 'lucide-react'
 import { Link, useNavigate } from 'react-router-dom'
 import JobCard from '../components/JobCard'
@@ -9,6 +9,21 @@ import { getJobs, scrapeJobs, getTags } from '../services/api'
 import { isAuthenticated, logout, getUserInfo, isAdmin } from '../services/auth'
 import { getBookmarks } from '../services/bookmarks'
 import { useDarkMode } from '../context/DarkModeContext'
+
+// Custom debounce hook
+function useDebounce(value, delay) {
+  const [debouncedValue, setDebouncedValue] = useState(value)
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedValue(value)
+    }, delay)
+
+    return () => clearTimeout(timer)
+  }, [value, delay])
+
+  return debouncedValue
+}
 
 function Dashboard() {
   const [jobs, setJobs] = useState([])
@@ -26,10 +41,14 @@ function Dashboard() {
   const navigate = useNavigate()
   const { isDark, toggleDark } = useDarkMode()
 
-  // Load jobs when page or filters change
+  // Debounced search and location values
+  const debouncedSearch = useDebounce(searchQuery, 300)
+  const debouncedLocation = useDebounce(location, 300)
+
+  // Load jobs when page or debounced filters change
   useEffect(() => {
-    loadJobs(currentPage, searchQuery, location, selectedTags[0] || '')
-  }, [currentPage, searchQuery, location, selectedTags])
+    loadJobs(currentPage, debouncedSearch, debouncedLocation, selectedTags[0] || '')
+  }, [currentPage, debouncedSearch, debouncedLocation, selectedTags])
 
   // Close profile menu when clicking outside
   useEffect(() => {
