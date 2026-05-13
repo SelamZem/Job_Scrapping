@@ -30,7 +30,6 @@ class JobResponse(BaseModel):
     tags: List[str] = Field(default_factory=list)
 
 @router.get("/")
-@cache_response(ttl=300)  # 5 minutes cache in production
 async def get_jobs(
     db: Session = Depends(get_db),
     skip: int = 0,
@@ -64,8 +63,11 @@ async def get_jobs(
     # Apply tag filter — supports multiple tags (jobs must have ALL selected tags)
     if tag:
         for t in tag:
-            tag_alias = db.query(Job.id).join(Job.tags).filter(Tag.name == t).subquery()
-            query = query.filter(Job.id.in_(tag_alias))
+            query = query.filter(
+                Job.id.in_(
+                    db.query(Job.id).join(Job.tags).filter(Tag.name == t)
+                )
+            )
 
     # Get total count for pagination
     total_count = query.count()
