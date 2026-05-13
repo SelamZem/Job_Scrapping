@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session, selectinload
-from sqlalchemy import func, desc, or_, exists, and_
+from sqlalchemy import func, desc, or_
 from typing import List, Optional
 from app.database import get_db
 from app.models.job import Job, Tag, job_tags
@@ -59,15 +59,12 @@ async def get_jobs(
     if location:
         query = query.filter(Job.location.ilike(f"%{location}%"))
 
-    # Apply tag filter — each selected tag must exist on the job (AND logic)
+    # Apply tag filter — OR logic: jobs that have ANY of the selected tags
     active_tags = [t.strip() for t in (tag or []) if t and t.strip()]
-    for t in active_tags:
+    if active_tags:
         query = query.filter(
-            exists().where(
-                and_(
-                    job_tags.c.job_id == Job.id,
-                    job_tags.c.tag_id == db.query(Tag.id).filter(Tag.name == t).scalar_subquery()
-                )
+            Job.id.in_(
+                db.query(Job.id).join(Job.tags).filter(Tag.name.in_(active_tags))
             )
         )
 

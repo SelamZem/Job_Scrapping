@@ -6,24 +6,24 @@ function TagFilter({ tags, selectedTags, onApplyFilters, onClearFilters }) {
   const [tempSelected, setTempSelected] = useState([...selectedTags])
   const dropdownRef = useRef(null)
 
-  const categories = [...new Set(tags.map(t => t.category))].filter(
-    c => c !== 'role' && c !== 'industry'
-  )
+  const capitalize = (str) =>
+    str ? str.charAt(0).toUpperCase() + str.slice(1).toLowerCase() : ''
 
-  const capitalize = (str) => str.charAt(0).toUpperCase() + str.slice(1)
+  // All tags sorted alphabetically by name, with first letter capitalized
+  const sortedTags = [...tags]
+    .map(t => ({ ...t, name: t.name }))
+    .sort((a, b) => a.name.localeCompare(b.name))
 
-  // Only sync tempSelected when dropdown is closed (don't interrupt active selection)
+  // Sync temp when closed externally (e.g. clear from outside)
   useEffect(() => {
-    if (!isOpen) {
-      setTempSelected([...selectedTags])
-    }
+    if (!isOpen) setTempSelected([...selectedTags])
   }, [selectedTags])
 
   // Close on outside click — discard uncommitted changes
   useEffect(() => {
     const handleClickOutside = (e) => {
       if (dropdownRef.current && !dropdownRef.current.contains(e.target)) {
-        setTempSelected([...selectedTags]) // discard
+        setTempSelected([...selectedTags])
         setIsOpen(false)
       }
     }
@@ -54,6 +54,9 @@ function TagFilter({ tags, selectedTags, onApplyFilters, onClearFilters }) {
     onApplyFilters(next)
   }
 
+  // Height for exactly 5 items (each item ~36px) + padding
+  const LIST_HEIGHT = '180px'
+
   return (
     <div>
       {/* Active filter chips */}
@@ -81,7 +84,7 @@ function TagFilter({ tags, selectedTags, onApplyFilters, onClearFilters }) {
 
       {/* Dropdown */}
       <div className="relative" ref={dropdownRef}>
-        {/* Trigger button */}
+        {/* Trigger */}
         <button
           onClick={() => setIsOpen(o => !o)}
           className="w-full flex items-center justify-between px-3 py-2.5 bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-600 transition-colors text-sm"
@@ -95,43 +98,39 @@ function TagFilter({ tags, selectedTags, onApplyFilters, onClearFilters }) {
         </button>
 
         {isOpen && (
-          <div className="absolute z-50 w-full mt-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg shadow-xl">
-            {/* Tag list */}
-            <div className="max-h-60 overflow-y-auto p-2">
-              {categories.length === 0 ? (
+          <div className="absolute z-50 w-full mt-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg shadow-xl flex flex-col">
+            {/* Scrollable list — fixed height shows ~5 items */}
+            <div
+              className="overflow-y-auto p-2"
+              style={{ height: LIST_HEIGHT }}
+            >
+              {sortedTags.length === 0 ? (
                 <p className="text-slate-400 text-sm p-3 text-center">No tags yet</p>
               ) : (
-                categories.map(category => (
-                  <div key={category} className="mb-2">
-                    <p className="text-xs font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider px-2 py-1">
-                      {capitalize(category)}
-                    </p>
-                    {tags
-                      .filter(t => t.category === category)
-                      .map(tag => (
-                        <label
-                          key={tag.id}
-                          className="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-slate-50 dark:hover:bg-slate-700 cursor-pointer select-none"
-                        >
-                          <input
-                            type="checkbox"
-                            checked={tempSelected.includes(tag.name)}
-                            onChange={() => handleToggle(tag.name)}
-                            className="w-4 h-4 rounded border-slate-300 accent-primary"
-                          />
-                          <span className="text-sm text-slate-700 dark:text-slate-300 flex-1">{tag.name}</span>
-                          {tempSelected.includes(tag.name) && (
-                            <Check className="h-3.5 w-3.5 text-primary flex-shrink-0" />
-                          )}
-                        </label>
-                      ))}
-                  </div>
+                sortedTags.map(tag => (
+                  <label
+                    key={tag.id}
+                    className="flex items-center gap-2 px-2 py-2 rounded hover:bg-slate-50 dark:hover:bg-slate-700 cursor-pointer select-none"
+                  >
+                    <input
+                      type="checkbox"
+                      checked={tempSelected.includes(tag.name)}
+                      onChange={() => handleToggle(tag.name)}
+                      className="w-4 h-4 rounded border-slate-300 accent-primary flex-shrink-0"
+                    />
+                    <span className="text-sm text-slate-700 dark:text-slate-300 flex-1 capitalize">
+                      {tag.name}
+                    </span>
+                    {tempSelected.includes(tag.name) && (
+                      <Check className="h-3.5 w-3.5 text-primary flex-shrink-0" />
+                    )}
+                  </label>
                 ))
               )}
             </div>
 
-            {/* Footer buttons */}
-            <div className="flex gap-2 p-2 border-t border-slate-100 dark:border-slate-700">
+            {/* Apply / Clear — always visible below the list */}
+            <div className="flex gap-2 p-2 border-t border-slate-100 dark:border-slate-700 flex-shrink-0">
               <button
                 onClick={handleClear}
                 className="flex-1 px-3 py-2 text-xs font-medium text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-600 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors"
