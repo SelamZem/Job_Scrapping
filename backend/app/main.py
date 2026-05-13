@@ -1,3 +1,5 @@
+import os
+import asyncio
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.api import jobs, recommendations, tags, auth_new as auth, admin, health
@@ -10,13 +12,16 @@ from contextlib import asynccontextmanager
 
 Base.metadata.create_all(bind=engine)
 
-@asynccontextmanager
-async def lifespan(app: FastAPI):
-    # Startup: Auto-scrape jobs from all sources
+
+async def background_scrape():
+    """Run startup scraping in the background so the server starts instantly."""
+    # Small delay to let the server fully start first
+    await asyncio.sleep(5)
+
     db = SessionLocal()
     try:
         job_count = db.query(Job).count()
-        print(f"Database has {job_count} jobs. Scraping for more jobs...")
+        print(f"[Background] Database has {job_count} jobs. Starting background scrape...")
 
         api_scrapers = [
             ('Remotive', RemotiveAPIScraper()),
@@ -28,15 +33,17 @@ async def lifespan(app: FastAPI):
             ('GitHub Jobs', GitHubJobsScraper()),
             ('Stack Overflow', StackOverflowScraper()),
             ('Authentic Jobs', AuthenticJobsScraper()),
-            ('EuroJobs', EuroJobsScraper())
+            ('EuroJobs', EuroJobsScraper()),
         ]
         tag_service = TagService(db)
         jobs_saved = 0
 
         for source_name, scraper in api_scrapers:
             try:
-                # Scrape without filtering to get all available jobs
-                jobs_data = scraper.scrape_jobs("", "", max_pages=1)
+                # Run blocking scraper in a thread so we don't block the event loop
+                jobs_data = await asyncio.to_thread(
+                    scraper.scrape_jobs, "", "", 1
+                )
                 if jobs_data:
                     for job_data in jobs_data:
                         job_data['source'] = source_name.lower().replace(' ', '_')
@@ -51,21 +58,26 @@ async def lifespan(app: FastAPI):
                         job.tags = tags
                         db.commit()
                         jobs_saved += 1
-                    print(f"Saved {len(jobs_data)} jobs from {source_name}")
+                    print(f"[Background] Saved {len(jobs_data)} jobs from {source_name}")
             except Exception as e:
-                print(f"Error with {source_name} scraper: {e}")
+                print(f"[Background] Error with {source_name} scraper: {e}")
                 continue
 
-        print(f"Auto-scraped {jobs_saved} new jobs from real APIs on startup")
+        print(f"[Background] Scrape complete — {jobs_saved} new jobs added")
     finally:
         db.close()
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Server starts immediately, scraping happens in the background
+    asyncio.create_task(background_scrape())
+    print("✅ Server ready. Background scrape started.")
     yield
-    # Shutdown
-    pass
+    # Shutdown — nothing to clean up
+
 
 app = FastAPI(title="Care Jobs API", version="1.0.0", lifespan=lifespan)
-
-import os
 
 # CORS origins
 origins = [
@@ -94,10 +106,12 @@ app.include_router(auth.router, prefix="/api/auth", tags=["auth"])
 app.include_router(admin.router, prefix="/api/admin", tags=["admin"])
 app.include_router(health.router, prefix="/health", tags=["health"])
 
+
 @app.get("/")
 async def root():
     return {"message": "Care Jobs API is running", "version": "1.0.0"}
 
+
 @app.get("/health")
-async def health():
+async def health_check():
     return {"status": "healthy"}
