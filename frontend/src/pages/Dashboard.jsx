@@ -304,18 +304,20 @@ function Dashboard() {
         <div className="flex flex-col lg:flex-row gap-4 sm:gap-8">
           {/* Sidebar */}
           <div className="lg:w-64 lg:flex-shrink-0 order-2 lg:order-1">
-            <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 p-4 sm:p-6">
-              <div className="flex items-center space-x-2 mb-3 sm:mb-4">
-                <Filter className="h-4 w-4 sm:h-5 sm:w-5 text-primary" />
-                <h2 className="font-semibold text-slate-900 dark:text-white text-sm sm:text-base">Filters</h2>
+            <div className="lg:sticky lg:top-20">
+              <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 p-4 sm:p-6">
+                <div className="flex items-center space-x-2 mb-3 sm:mb-4">
+                  <Filter className="h-4 w-4 sm:h-5 sm:w-5 text-primary" />
+                  <h2 className="font-semibold text-slate-900 dark:text-white text-sm sm:text-base">Filters</h2>
+                </div>
+                <TagFilter
+                  tags={tags}
+                  selectedTags={selectedTags}
+                  onToggleTag={toggleTag}
+                  onApplyFilters={handleApplyFilters}
+                  onClearFilters={handleClearFilters}
+                />
               </div>
-              <TagFilter
-                tags={tags}
-                selectedTags={selectedTags}
-                onToggleTag={toggleTag}
-                onApplyFilters={handleApplyFilters}
-                onClearFilters={handleClearFilters}
-              />
             </div>
           </div>
 
