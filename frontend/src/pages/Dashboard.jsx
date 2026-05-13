@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
-import { Search, Filter, Briefcase, Sparkles, User, LogOut, LogIn, UserPlus, Heart, Moon, Sun, Shield } from 'lucide-react'
+import { Search, Filter, Briefcase, Sparkles, User, LogOut, LogIn, UserPlus, Heart, Moon, Sun, Shield, X, SlidersHorizontal } from 'lucide-react'
 import { Link, useNavigate } from 'react-router-dom'
 import JobCard from '../components/JobCard'
 import SearchBar from '../components/SearchBar'
@@ -39,6 +39,7 @@ function Dashboard() {
   const [showProfileMenu, setShowProfileMenu] = useState(false)
   const [currentPage, setCurrentPage] = useState(1)
   const [bookmarkedIds, setBookmarkedIds] = useState([])
+  const [showMobileFilter, setShowMobileFilter] = useState(false)
   const jobsPerPage = 12
   const navigate = useNavigate()
   const { isDark, toggleDark } = useDarkMode()
@@ -288,10 +289,42 @@ function Dashboard() {
         />
       )}
 
+      {/* Mobile Filter Drawer */}
+      {showMobileFilter && (
+        <div className="fixed inset-0 z-50 lg:hidden">
+          {/* Backdrop */}
+          <div
+            className="absolute inset-0 bg-black/50 backdrop-blur-sm"
+            onClick={() => setShowMobileFilter(false)}
+          />
+          {/* Drawer */}
+          <div className="absolute bottom-0 left-0 right-0 bg-white dark:bg-slate-800 rounded-t-2xl shadow-2xl p-5 max-h-[80vh] overflow-y-auto">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-2">
+                <SlidersHorizontal className="h-5 w-5 text-primary" />
+                <h2 className="font-semibold text-slate-900 dark:text-white">Filters</h2>
+              </div>
+              <button
+                onClick={() => setShowMobileFilter(false)}
+                className="p-1.5 rounded-full hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-500"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+            <TagFilter
+              tags={tags}
+              selectedTags={selectedTags}
+              onApplyFilters={(t) => { handleApplyFilters(t); setShowMobileFilter(false) }}
+              onClearFilters={() => { handleClearFilters(); setShowMobileFilter(false) }}
+            />
+          </div>
+        </div>
+      )}
+
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-3 sm:px-4 lg:px-8 py-4 sm:py-8">
         {/* Search Section */}
-        <div className="mb-4 sm:mb-8">
+        <div className="mb-4 sm:mb-6">
           <SearchBar
             searchQuery={searchQuery}
             setSearchQuery={handleSearchChange}
@@ -302,9 +335,27 @@ function Dashboard() {
           />
         </div>
 
+        {/* Mobile filter bar */}
+        <div className="flex items-center justify-between mb-4 lg:hidden">
+          <span className="text-slate-500 dark:text-slate-400 text-sm">
+            {showSavedJobs ? `${displayJobs.length} saved` : `${displayTotal} jobs`}
+          </span>
+          <button
+            onClick={() => setShowMobileFilter(true)}
+            className={`flex items-center gap-2 px-3 py-2 rounded-lg border text-sm font-medium transition-colors ${
+              selectedTags.length > 0
+                ? 'bg-primary text-white border-primary'
+                : 'border-slate-300 dark:border-slate-600 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700'
+            }`}
+          >
+            <SlidersHorizontal className="h-4 w-4" />
+            Filters {selectedTags.length > 0 && `(${selectedTags.length})`}
+          </button>
+        </div>
+
         <div className="flex flex-col lg:flex-row gap-4 sm:gap-8">
-          {/* Sidebar */}
-          <div className="lg:w-64 lg:flex-shrink-0 order-2 lg:order-1">
+          {/* Sidebar — desktop only */}
+          <div className="hidden lg:block lg:w-64 lg:flex-shrink-0">
             <div className="lg:sticky lg:top-20">
               <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 p-4 sm:p-6">
                 <div className="flex items-center space-x-2 mb-3 sm:mb-4">
@@ -314,7 +365,6 @@ function Dashboard() {
                 <TagFilter
                   tags={tags}
                   selectedTags={selectedTags}
-                  onToggleTag={toggleTag}
                   onApplyFilters={handleApplyFilters}
                   onClearFilters={handleClearFilters}
                 />
@@ -323,8 +373,8 @@ function Dashboard() {
           </div>
 
           {/* Job Listings */}
-          <div className="flex-1 order-1 lg:order-2">
-            <div className="flex items-center justify-between mb-4 sm:mb-6">
+          <div className="flex-1">
+            <div className="hidden lg:flex items-center justify-between mb-4 sm:mb-6">
               <div className="flex items-center space-x-2">
                 <Search className="h-4 w-4 sm:h-5 sm:w-5 text-slate-400 dark:text-slate-500" />
                 <span className="text-slate-600 dark:text-slate-400 text-sm sm:text-base">
