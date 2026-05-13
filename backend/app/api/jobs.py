@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session, selectinload
 from sqlalchemy import func, desc, or_
 from typing import List, Optional
@@ -37,7 +37,7 @@ async def get_jobs(
     limit: int = 12,
     search: Optional[str] = None,
     location: Optional[str] = None,
-    tag: Optional[str] = None
+    tag: Optional[List[str]] = Query(default=None)
 ):
     # Performance timing
     import time
@@ -61,9 +61,11 @@ async def get_jobs(
     if location:
         query = query.filter(Job.location.ilike(f"%{location}%"))
 
-    # Apply tag filter - optimized join
+    # Apply tag filter — supports multiple tags (jobs must have ALL selected tags)
     if tag:
-        query = query.join(Job.tags).filter(Tag.name == tag)
+        for t in tag:
+            tag_alias = db.query(Job.id).join(Job.tags).filter(Tag.name == t).subquery()
+            query = query.filter(Job.id.in_(tag_alias))
 
     # Get total count for pagination
     total_count = query.count()

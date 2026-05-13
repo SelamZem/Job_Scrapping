@@ -49,8 +49,9 @@ function Dashboard() {
 
   // Load jobs when page or debounced filters change
   useEffect(() => {
-    loadJobs(currentPage, debouncedSearch, debouncedLocation, selectedTags[0] || '')
-  }, [currentPage, debouncedSearch, debouncedLocation, selectedTags])
+    loadJobs(currentPage, debouncedSearch, debouncedLocation, selectedTags)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentPage, debouncedSearch, debouncedLocation, JSON.stringify(selectedTags)])
 
   // Close profile menu when clicking outside
   useEffect(() => {
@@ -75,10 +76,10 @@ function Dashboard() {
     navigate('/login')
   }
 
-  const loadJobs = async (page = 1, search = '', locationFilter = '', tagFilter = '') => {
+  const loadJobs = async (page = 1, search = '', locationFilter = '', tagFilters = []) => {
     setLoading(true)
     try {
-      const data = await getJobs(page, jobsPerPage, search, locationFilter, tagFilter)
+      const data = await getJobs(page, jobsPerPage, search, locationFilter, tagFilters)
       setJobs(data.jobs)
       setTotalJobs(data.total)
     } catch (error) {
@@ -135,8 +136,8 @@ function Dashboard() {
     setCurrentPage(1)
   }
 
-  const handleApplyFilters = (tags) => {
-    setSelectedTags(tags)
+  const handleApplyFilters = (newTags) => {
+    setSelectedTags([...newTags])
     setCurrentPage(1)
   }
 
