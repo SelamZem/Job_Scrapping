@@ -42,22 +42,31 @@ function Dashboard() {
   const debouncedSearch = useDebounce(searchQuery, 400)
   const debouncedLocation = useDebounce(location, 400)
 
-  // On mount: load 4 jobs fast, then full page, then tags/bookmarks
+  // On mount: show cached jobs instantly, then fetch fresh data
   useEffect(() => {
     const init = async () => {
-      try {
-        const quick = await getJobs(1, 4, '', '', [])
-        setJobs(quick.jobs)
-        setTotalJobs(quick.total)
+      // Step 1: show cached jobs immediately (zero wait)
+      const cached = localStorage.getItem('cached_jobs')
+      const cachedTotal = localStorage.getItem('cached_jobs_total')
+      if (cached) {
+        setJobs(JSON.parse(cached))
+        setTotalJobs(cachedTotal ? parseInt(cachedTotal) : 0)
         setLoading(false)
+      }
+
+      // Step 2: fetch fresh jobs from backend
+      try {
+        const data = await getJobs(1, jobsPerPage, '', '', [])
+        setJobs(data.jobs)
+        setTotalJobs(data.total)
+        setLoading(false)
+        // Update cache with fresh data
+        localStorage.setItem('cached_jobs', JSON.stringify(data.jobs))
+        localStorage.setItem('cached_jobs_total', String(data.total))
       } catch (e) {
         setLoading(false)
       }
-      try {
-        const full = await getJobs(1, jobsPerPage, '', '', [])
-        setJobs(full.jobs)
-        setTotalJobs(full.total)
-      } catch (e) { /* silent */ }
+
       setInitialDone(true)
       loadTags()
       loadBookmarks()
@@ -98,6 +107,11 @@ function Dashboard() {
       const data = await getJobs(page, jobsPerPage, search, loc, tagFilters)
       setJobs(data.jobs)
       setTotalJobs(data.total)
+      // Cache first page with no filters for next visit
+      if (page === 1 && !search && !loc && tagFilters.length === 0) {
+        localStorage.setItem('cached_jobs', JSON.stringify(data.jobs))
+        localStorage.setItem('cached_jobs_total', String(data.total))
+      }
     } catch (e) {
       console.error(e)
     } finally {
