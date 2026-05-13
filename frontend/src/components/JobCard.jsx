@@ -1,49 +1,41 @@
 import { Building2, MapPin, ExternalLink, Tag as TagIcon, Heart, Eye } from 'lucide-react'
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { isBookmarked, toggleBookmark, canBookmark } from '../services/bookmarks'
+import { isBookmarked, toggleBookmark } from '../services/bookmarks'
+import { isAuthenticated } from '../services/auth'
 import { isJobVisited, markJobVisited } from '../services/visited'
 
-function JobCard({ job }) {
+function JobCard({ job, bookmarkedIds = [] }) {
   const [bookmarked, setBookmarked] = useState(false)
   const [visited, setVisited] = useState(false)
   const navigate = useNavigate()
 
-  // Check visited status on mount
   useEffect(() => {
     setVisited(isJobVisited(job.id))
   }, [job.id])
 
-  // Check bookmark status on mount
   useEffect(() => {
-    setBookmarked(isBookmarked(job.id))
-  }, [job.id])
+    setBookmarked(isBookmarked(job.id, bookmarkedIds))
+  }, [job.id, bookmarkedIds])
 
-  // Handle job link click - mark as visited
-  const handleJobClick = (e) => {
+  const handleJobClick = () => {
     markJobVisited(job.id)
     setVisited(true)
-    // Let the default link behavior continue (open in new tab)
   }
 
-  // Handle bookmark toggle
-  const handleBookmark = (e) => {
+  const handleBookmark = async (e) => {
     e.preventDefault()
     e.stopPropagation()
-    
-    // Check if user can bookmark (logged in)
-    if (!canBookmark()) {
+
+    if (!isAuthenticated()) {
       alert('Please log in to save jobs')
       navigate('/login')
       return
     }
-    
-    const result = toggleBookmark(job.id)
+
+    const result = await toggleBookmark(job.id, bookmarked)
     if (result.error) {
       alert(result.error)
-      if (result.error.includes('log in')) {
-        navigate('/login')
-      }
       return
     }
     setBookmarked(result.isBookmarked)

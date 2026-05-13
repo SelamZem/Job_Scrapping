@@ -37,6 +37,7 @@ function Dashboard() {
   const [showSavedJobs, setShowSavedJobs] = useState(false)
   const [showProfileMenu, setShowProfileMenu] = useState(false)
   const [currentPage, setCurrentPage] = useState(1)
+  const [bookmarkedIds, setBookmarkedIds] = useState([])
   const jobsPerPage = 12
   const navigate = useNavigate()
   const { isDark, toggleDark } = useDarkMode()
@@ -64,6 +65,7 @@ function Dashboard() {
   // Initial load
   useEffect(() => {
     loadTags()
+    loadBookmarks()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
@@ -91,6 +93,15 @@ function Dashboard() {
       setTags(data)
     } catch (error) {
       console.error('Error loading tags:', error)
+    }
+  }
+
+  const loadBookmarks = async () => {
+    try {
+      const ids = await getBookmarks()
+      setBookmarkedIds(ids)
+    } catch (error) {
+      console.error('Error loading bookmarks:', error)
     }
   }
 
@@ -148,7 +159,6 @@ function Dashboard() {
 
   // Get saved jobs
   const getSavedJobs = () => {
-    const bookmarkedIds = getBookmarks()
     return jobs.filter(job => bookmarkedIds.includes(job.id))
   }
 
@@ -340,7 +350,7 @@ function Dashboard() {
               <>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                   {displayJobs.map((job) => (
-                    <JobCard key={job.id} job={job} />
+                    <JobCard key={job.id} job={job} bookmarkedIds={bookmarkedIds} />
                   ))}
                   {loading && (
                     <>

@@ -1,77 +1,106 @@
-// Bookmark service using localStorage - requires authentication
-import { isAuthenticated, getUserInfo } from './auth'
+// Bookmark service — uses server-side storage when logged in, localStorage as fallback
+import axios from 'axios'
+import { isAuthenticated, getToken } from './auth'
 
-const getStorageKey = () => {
-  const user = getUserInfo()
-  if (!user || !user.id) return null
-  return `care_jobs_bookmarks_${user.id}`
-}
+const API_BASE_URL = import.meta.env.VITE_API_URL || '/api'
 
-export const canBookmark = () => {
-  return isAuthenticated() && getStorageKey() !== null
-}
+// Axios instance with auth header
+const authAxios = () =>
+  axios.create({
+    baseURL: API_BASE_URL,
+    headers: { Authorization: `Bearer ${getToken()}` },
+  })
 
-export const getBookmarks = () => {
-  if (!canBookmark()) return []
-  
+// ─── localStorage fallback (unauthenticated) ────────────────────────────────
+
+const LOCAL_KEY = 'care_jobs_bookmarks_guest'
+
+const getLocalBookmarks = () => {
   try {
-    const key = getStorageKey()
-    const stored = localStorage.getItem(key)
-    return stored ? JSON.parse(stored) : []
-  } catch (error) {
-    console.error('Error reading bookmarks:', error)
+    return JSON.parse(localStorage.getItem(LOCAL_KEY) || '[]')
+  } catch {
     return []
   }
 }
 
-export const addBookmark = (jobId) => {
-  if (!canBookmark()) {
-    return { error: 'Please log in to save jobs', bookmarks: [] }
-  }
-  
+const setLocalBookmarks = (ids) => {
+  localStorage.setItem(LOCAL_KEY, JSON.stringify(ids))
+}
+
+// ─── Public API ──────────────────────────────────────────────────────────────
+
+export const canBookmark = () => true // anyone can bookmark; server requires auth
+
+/**
+ * Fetch all saved job IDs.
+ * Returns an array of integers.
+ */
+export const getBookmarks = async () => {
+  if (!isAuthenticated()) return getLocalBookmarks()
   try {
-    const bookmarks = getBookmarks()
-    if (!bookmarks.includes(jobId)) {
-      bookmarks.push(jobId)
-      localStorage.setItem(getStorageKey(), JSON.stringify(bookmarks))
+    const res = await authAxios().get('/bookmarks/')
+    return res.data // array of job IDs
+  } catch {
+    return getLocalBookmarks()
+  }
+}
+
+/**
+ * Add a job to saved jobs.
+ */
+export const addBookmark = async (jobId) => {
+  if (!isAuthenticated()) {
+    const ids = getLocalBookmarks()
+    if (!ids.includes(jobId)) {
+      ids.push(jobId)
+      setLocalBookmarks(ids)
     }
-    return { error: null, bookmarks }
-  } catch (error) {
-    console.error('Error adding bookmark:', error)
-    return { error: 'Failed to save job', bookmarks: getBookmarks() }
+    return { error: null, bookmarks: ids }
   }
-}
-
-export const removeBookmark = (jobId) => {
-  if (!canBookmark()) {
-    return { error: 'Please log in to manage saved jobs', bookmarks: [] }
-  }
-  
   try {
-    const bookmarks = getBookmarks().filter(id => id !== jobId)
-    localStorage.setItem(getStorageKey(), JSON.stringify(bookmarks))
-    return { error: null, bookmarks }
-  } catch (error) {
-    console.error('Error removing bookmark:', error)
-    return { error: 'Failed to remove job', bookmarks: getBookmarks() }
+    const res = await authAxios().post(`/bookmarks/${jobId}`)
+    return { error: null, bookmarks: res.data.saved_jobs }
+  } catch (e) {
+    return { error: 'Failed to save job', bookmarks: [] }
   }
 }
 
-export const isBookmarked = (jobId) => {
-  if (!canBookmark()) return false
-  return getBookmarks().includes(jobId)
+/**
+ * Remove a job from saved jobs.
+ */
+export const removeBookmark = async (jobId) => {
+  if (!isAuthenticated()) {
+    const ids = getLocalBookmarks().filter((id) => id !== jobId)
+    setLocalBookmarks(ids)
+    return { error: null, bookmarks: ids }
+  }
+  try {
+    const res = await authAxios().delete(`/bookmarks/${jobId}`)
+    return { error: null, bookmarks: res.data.saved_jobs }
+  } catch (e) {
+    return { error: 'Failed to remove job', bookmarks: [] }
+  }
 }
 
-export const toggleBookmark = (jobId) => {
-  if (!canBookmark()) {
-    return { error: 'Please log in to save jobs', bookmarks: [], isBookmarked: false }
-  }
-  
-  if (isBookmarked(jobId)) {
-    const result = removeBookmark(jobId)
+/**
+ * Check if a single job is bookmarked (sync, uses cached state).
+ * Pass the bookmarkedIds array fetched via getBookmarks() for accuracy.
+ */
+export const isBookmarked = (jobId, bookmarkedIds = []) => {
+  if (bookmarkedIds.length > 0) return bookmarkedIds.includes(jobId)
+  // fallback: check localStorage for guests
+  return getLocalBookmarks().includes(jobId)
+}
+
+/**
+ * Toggle bookmark state for a job.
+ */
+export const toggleBookmark = async (jobId, currentlyBookmarked) => {
+  if (currentlyBookmarked) {
+    const result = await removeBookmark(jobId)
     return { ...result, isBookmarked: false }
   } else {
-    const result = addBookmark(jobId)
+    const result = await addBookmark(jobId)
     return { ...result, isBookmarked: true }
   }
 }

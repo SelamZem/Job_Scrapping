@@ -149,7 +149,7 @@ async def signup(user_data: UserCreate, db: Session = Depends(get_db)):
         print(f"Signup error: {str(e)}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Signup failed: {str(e)}"
+            detail="Signup failed. Please try again."
         )
 
 @router.post("/login", response_model=Token)
@@ -187,5 +187,5 @@ async def login(user_data: UserLogin, db: Session = Depends(get_db)):
         print(f"Login error: {str(e)}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Login failed: {str(e)}"
+            detail="Login failed. Please try again."
         )
