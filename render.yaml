@@ -1,41 +1,36 @@
 services:
-  # Backend FastAPI service
   - type: web
-    name: care-jobs-api
+    name: job-scrapping-backend
     runtime: python
-    plan: free
-    buildCommand: cd backend && pip install -r requirements.txt
-    startCommand: cd backend && uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    rootDir: backend
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
     envVars:
-      - key: PYTHON_VERSION
-        value: 3.11.0
+      - key: RENDER
+        value: "true"
       - key: DATABASE_URL
         fromDatabase:
-          name: care-jobs-db
+          name: job-scrapping-db
           property: connectionString
-      - key: OPENAI_API_KEY
-        sync: false
       - key: SECRET_KEY
         generateValue: true
       - key: FRONTEND_URL
-        fromService:
-          type: static
-          name: care-jobs-frontend
-          property: url
-    healthCheckPath: /health
+        sync: false
+      - key: OPENAI_API_KEY
+        sync: false
 
-  # Frontend React service (static site)
-  - type: static
-    name: care-jobs-frontend
-    buildCommand: cd frontend && npm install && npm run build
-    staticPublishPath: ./frontend/dist
+  - type: web
+    name: job-scrapping-frontend
+    runtime: static
+    rootDir: frontend
+    buildCommand: npm install && npm run build
+    staticPublishPath: dist
     envVars:
-      - key: NODE_VERSION
-        value: 20.11.0
       - key: VITE_API_URL
-        value: https://care-jobs-api.onrender.com
+        sync: false
 
 databases:
-  - name: care-jobs-db
+  - name: job-scrapping-db
+    databaseName: job_scrapping
+    user: job_scrapping_user
     plan: free
-    ipAllowList: []
