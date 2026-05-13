@@ -4,10 +4,12 @@ import { useNavigate } from 'react-router-dom'
 import { isBookmarked, toggleBookmark } from '../services/bookmarks'
 import { isAuthenticated } from '../services/auth'
 import { isJobVisited, markJobVisited } from '../services/visited'
+import LoginPromptModal from './LoginPromptModal'
 
 function JobCard({ job, bookmarkedIds = [] }) {
   const [bookmarked, setBookmarked] = useState(false)
   const [visited, setVisited] = useState(false)
+  const [showLoginPrompt, setShowLoginPrompt] = useState(false)
   const navigate = useNavigate()
 
   useEffect(() => {
@@ -28,17 +30,19 @@ function JobCard({ job, bookmarkedIds = [] }) {
     e.stopPropagation()
 
     if (!isAuthenticated()) {
-      alert('Please log in to save jobs')
-      navigate('/login')
+      setShowLoginPrompt(true)
       return
     }
 
     const result = await toggleBookmark(job.id, bookmarked)
-    if (result.error) {
-      alert(result.error)
-      return
-    }
+    if (result.error) return
     setBookmarked(result.isBookmarked)
+  }
+
+  // After login via modal, immediately bookmark the job
+  const handleLoginSuccess = async () => {
+    const result = await toggleBookmark(job.id, false)
+    if (!result.error) setBookmarked(true)
   }
 
   // Strip HTML tags from text
@@ -52,11 +56,18 @@ function JobCard({ job, bookmarkedIds = [] }) {
   const cleanDescription = stripHtml(job.description)
 
   return (
-    <a
-      href={job.url}
-      target="_blank"
-      rel="noopener noreferrer"
-      onClick={handleJobClick}
+    <>
+      {showLoginPrompt && (
+        <LoginPromptModal
+          onClose={() => setShowLoginPrompt(false)}
+          onLoginSuccess={handleLoginSuccess}
+        />
+      )}
+      <a
+        href={job.url}
+        target="_blank"
+        rel="noopener noreferrer"
+        onClick={handleJobClick}
       className={`block rounded-xl shadow-sm border p-4 sm:p-6 hover:shadow-md transition-all cursor-pointer ${visited ? 'bg-slate-50 dark:bg-slate-800/70 border-slate-200 dark:border-slate-700' : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 hover:border-primary dark:hover:border-slate-600'}`}
     >
       <div className="flex items-start justify-between mb-3 sm:mb-4">
@@ -126,6 +137,7 @@ function JobCard({ job, bookmarkedIds = [] }) {
         View Job <ExternalLink className="h-3 w-3 sm:h-4 sm:w-4 ml-1" />
       </div>
     </a>
+    </>
   )
 }
 
