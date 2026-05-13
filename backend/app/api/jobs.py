@@ -1,16 +1,15 @@
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session, selectinload
-from sqlalchemy import func, desc, or_
+from sqlalchemy import func, desc, or_, exists, and_
 from typing import List, Optional
 from app.database import get_db
-from app.models.job import Job, Tag
+from app.models.job import Job, Tag, job_tags
 from app.scrapers import RemotiveAPIScraper, ArbeitnowAPIScraper, RSSWeWorkRemotelyScraper, RSSRemoteOKScraper, LandingJobsScraper, GitHubJobsScraper, StackOverflowScraper, AuthenticJobsScraper, EuroJobsScraper
 from app.services import TagService
 from app.services.scraper_monitor import scraper_monitor
 from app.config import cache_response, IS_PRODUCTION
 import time
 from pydantic import BaseModel, Field
-import hashlib
 
 router = APIRouter()
 
@@ -60,14 +59,17 @@ async def get_jobs(
     if location:
         query = query.filter(Job.location.ilike(f"%{location}%"))
 
-    # Apply tag filter — supports multiple tags (jobs must have ALL selected tags)
-    if tag:
-        for t in tag:
-            query = query.filter(
-                Job.id.in_(
-                    db.query(Job.id).join(Job.tags).filter(Tag.name == t)
+    # Apply tag filter — each selected tag must exist on the job (AND logic)
+    active_tags = [t.strip() for t in (tag or []) if t and t.strip()]
+    for t in active_tags:
+        query = query.filter(
+            exists().where(
+                and_(
+                    job_tags.c.job_id == Job.id,
+                    job_tags.c.tag_id == db.query(Tag.id).filter(Tag.name == t).scalar_subquery()
                 )
             )
+        )
 
     # Get total count for pagination
     total_count = query.count()
