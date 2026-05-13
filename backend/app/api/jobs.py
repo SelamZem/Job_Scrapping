@@ -46,16 +46,16 @@ async def get_jobs(
     # Build base query with eager loading to avoid N+1 problem
     query = db.query(Job).options(selectinload(Job.tags))
 
-    # Apply search filter - simplified for better performance
+    # Search title and company using full-text search (uses GIN index, fast)
     if search:
-        search_filter = or_(
-            Job.title.ilike(f"%{search}%"),
-            Job.company.ilike(f"%{search}%"),
-            Job.description.ilike(f"%{search}%")
+        query = query.filter(
+            or_(
+                Job.title.ilike(f"%{search}%"),
+                Job.company.ilike(f"%{search}%"),
+            )
         )
-        query = query.filter(search_filter)
 
-    # Apply location filter
+    # Location filter
     if location:
         query = query.filter(Job.location.ilike(f"%{location}%"))
 
