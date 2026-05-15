@@ -1,16 +1,22 @@
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from sqlalchemy.orm import Session, selectinload
 from sqlalchemy import func, desc, or_
 from typing import List, Optional
 from app.database import get_db
 from app.models.job import Job, Tag, job_tags
+from app.models.user import User
 from app.scrapers import RemotiveAPIScraper, ArbeitnowAPIScraper, RSSWeWorkRemotelyScraper, RSSRemoteOKScraper, LandingJobsScraper, GitHubJobsScraper, StackOverflowScraper, AuthenticJobsScraper, EuroJobsScraper
 from app.services import TagService
 from app.services.scraper_monitor import scraper_monitor
+from app.api.auth_new import get_current_user
 import time
 from pydantic import BaseModel, Field
 
 router = APIRouter()
+
+# In-memory rate limit store: {user_id: last_scrape_timestamp}
+_scrape_last_called: dict = {}
+SCRAPE_COOLDOWN_SECONDS = 60  # 1 scrape per minute per user
 
 class JobSearchRequest(BaseModel):
     query: str
@@ -103,7 +109,21 @@ async def get_jobs(
     return result
 
 @router.post("/scrape")
-async def scrape_jobs(request: JobSearchRequest, db: Session = Depends(get_db)):
+async def scrape_jobs(
+    request: JobSearchRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),  # must be logged in
+):
+    # Rate limit: 1 scrape per minute per user
+    user_id = str(current_user.id)
+    last = _scrape_last_called.get(user_id, 0)
+    wait = SCRAPE_COOLDOWN_SECONDS - (time.time() - last)
+    if wait > 0:
+        raise HTTPException(
+            status_code=429,
+            detail=f"Too many requests. Please wait {int(wait)} seconds before scraping again."
+        )
+    _scrape_last_called[user_id] = time.time()
     # Try multiple job APIs and RSS feeds for real data
     api_scrapers = [
         ('Remotive', RemotiveAPIScraper()),

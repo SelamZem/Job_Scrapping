@@ -6,6 +6,7 @@ import SearchBar from '../components/SearchBar'
 import TagFilter from '../components/TagFilter'
 import AIRecommendations from '../components/AIRecommendations'
 import SkeletonCard from '../components/SkeletonCard'
+import LoginPromptModal from '../components/LoginPromptModal'
 import { getJobs, scrapeJobs, getTags } from '../services/api'
 import { isAuthenticated, logout, getUserInfo, isAdmin } from '../services/auth'
 import { getBookmarks } from '../services/bookmarks'
@@ -35,6 +36,8 @@ function Dashboard() {
   const [currentPage, setCurrentPage] = useState(1)
   const [bookmarkedIds, setBookmarkedIds] = useState([])
   const [showMobileFilter, setShowMobileFilter] = useState(false)
+  const [showLoginPrompt, setShowLoginPrompt] = useState(false)
+  const [scrapeMessage, setScrapeMessage] = useState('')
   const jobsPerPage = 12
   const navigate = useNavigate()
   const { isDark, toggleDark } = useDarkMode()
@@ -131,16 +134,29 @@ function Dashboard() {
 
   const handleScrape = async () => {
     if (!searchQuery) return
+    if (!isAuthenticated()) {
+      setShowLoginPrompt(true)
+      return
+    }
     setLoading(true)
+    setScrapeMessage('')
     try {
-      await scrapeJobs(searchQuery, location)
+      const result = await scrapeJobs(searchQuery, location)
+      setScrapeMessage(`Found ${result.count} new jobs`)
       await loadJobs(1, searchQuery, location, selectedTags)
       setCurrentPage(1)
       loadTags()
-    } catch (e) {
-      console.error(e)
+    } catch (error) {
+      if (error.response?.status === 429) {
+        setScrapeMessage(error.response.data.detail)
+      } else if (error.response?.status === 401) {
+        setShowLoginPrompt(true)
+      } else {
+        setScrapeMessage('Search failed. Please try again.')
+      }
     } finally {
       setLoading(false)
+      setTimeout(() => setScrapeMessage(''), 4000)
     }
   }
 
@@ -237,6 +253,14 @@ function Dashboard() {
       {/* AI Recommendations */}
       {showRecommendations && <AIRecommendations jobs={jobs} onClose={() => setShowRecommendations(false)} />}
 
+      {/* Login prompt modal */}
+      {showLoginPrompt && (
+        <LoginPromptModal
+          onClose={() => setShowLoginPrompt(false)}
+          onLoginSuccess={() => setShowLoginPrompt(false)}
+        />
+      )}
+
       {/* Mobile Filter Drawer */}
       {showMobileFilter && (
         <div className="fixed inset-0 z-50 lg:hidden">
@@ -272,6 +296,11 @@ function Dashboard() {
             onSearch={handleScrape}
             loading={loading}
           />
+          {scrapeMessage && (
+            <div className="mt-2 px-4 py-2 bg-primary/10 text-primary text-sm rounded-lg text-center">
+              {scrapeMessage}
+            </div>
+          )}
         </div>
 
         {/* Mobile filter bar */}

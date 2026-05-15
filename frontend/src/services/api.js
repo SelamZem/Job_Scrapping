@@ -41,10 +41,7 @@ export const getJobs = async (page = 1, limit = 12, search = '', location = '', 
 }
 
 export const scrapeJobs = async (query, location) => {
-  const response = await axios.post(`${API_BASE_URL}/jobs/scrape`, {
-    query,
-    location
-  })
+  const response = await api.post('/jobs/scrape', { query, location })
   return response.data
 }
 
