@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Activity, CheckCircle, XCircle, AlertTriangle, RefreshCw, Play, Server } from 'lucide-react'
+import { Activity, CheckCircle, XCircle, AlertTriangle, RefreshCw, Play, Server, Download } from 'lucide-react'
 import { isAuthenticated, getUserInfo, isAdmin, logout } from '../services/auth'
 import api from '../services/api'
 
@@ -9,6 +9,8 @@ function AdminDashboard() {
   const [testResults, setTestResults] = useState(null)
   const [loading, setLoading] = useState(true)
   const [testing, setTesting] = useState(false)
+  const [scraping, setScraping] = useState(false)
+  const [scrapeMsg, setScrapeMsg] = useState('')
   const navigate = useNavigate()
 
   // Check if user is admin
@@ -48,15 +50,26 @@ function AdminDashboard() {
       const response = await api.post('/admin/scrapers/test')
       setTestResults(response.data)
     } catch (error) {
-      if (error.response?.status === 401) {
-        logout()
-        navigate('/login')
-        return
-      }
+      if (error.response?.status === 401) { logout(); navigate('/login'); return }
       console.error('Failed to run tests:', error)
       alert('Failed to run tests: ' + (error.response?.data?.detail || error.message))
     } finally {
       setTesting(false)
+    }
+  }
+
+  const triggerScrape = async () => {
+    try {
+      setScraping(true)
+      setScrapeMsg('')
+      const response = await api.post('/admin/scrape')
+      setScrapeMsg(response.data.message)
+      setTimeout(() => setScrapeMsg(''), 5000)
+    } catch (error) {
+      if (error.response?.status === 401) { logout(); navigate('/login'); return }
+      setScrapeMsg('Failed to start scrape: ' + (error.response?.data?.detail || error.message))
+    } finally {
+      setScraping(false)
     }
   }
 
@@ -152,13 +165,21 @@ function AdminDashboard() {
         </div>
 
         {/* Action Buttons */}
-        <div className="flex space-x-4 mb-8">
+        <div className="flex flex-wrap gap-3 mb-8">
           <button
             onClick={fetchHealth}
             className="flex items-center space-x-2 px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors"
           >
             <RefreshCw className="h-4 w-4" />
             <span>Refresh Health</span>
+          </button>
+          <button
+            onClick={triggerScrape}
+            disabled={scraping}
+            className="flex items-center space-x-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50"
+          >
+            <Download className={`h-4 w-4 ${scraping ? 'animate-bounce' : ''}`} />
+            <span>{scraping ? 'Starting...' : 'Scrape Now'}</span>
           </button>
           <button
             onClick={runTests}
@@ -169,6 +190,11 @@ function AdminDashboard() {
             <span>{testing ? 'Testing...' : 'Run Scraper Tests'}</span>
           </button>
         </div>
+        {scrapeMsg && (
+          <div className="mb-6 px-4 py-3 bg-green-50 dark:bg-green-900/30 border border-green-200 dark:border-green-700 rounded-lg text-green-700 dark:text-green-300 text-sm">
+            {scrapeMsg}
+          </div>
+        )}
 
         {/* Test Results */}
         {testResults && (
