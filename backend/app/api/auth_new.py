@@ -9,12 +9,14 @@ from typing import Optional
 from app.database import get_db
 from app.models.user import User
 
+import os
+
 router = APIRouter()
 
-# Security
-SECRET_KEY = "your-secret-key-here-change-in-production"
+# Security — read from env, fall back to dev default
+SECRET_KEY = os.getenv("SECRET_KEY", "dev-secret-key-change-in-production")
 ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_MINUTES = 30
+ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "1440"))  # 24 hours
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/auth/login")
 
 # Pydantic models

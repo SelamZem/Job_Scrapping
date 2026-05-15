@@ -9,6 +9,7 @@ import SkeletonCard from '../components/SkeletonCard'
 import LoginPromptModal from '../components/LoginPromptModal'
 import Toast from '../components/Toast'
 import { getJobs, getTags } from '../services/api'
+import api from '../services/api'
 import { isAuthenticated, logout, getUserInfo, isAdmin } from '../services/auth'
 import { getBookmarks } from '../services/bookmarks'
 import { useDarkMode } from '../context/DarkModeContext'
@@ -40,6 +41,8 @@ function Dashboard() {
   const [showLoginPrompt, setShowLoginPrompt] = useState(false)
   const [toast, setToast] = useState(null)
   const [showAd, setShowAd] = useState(false)
+  const [savedJobsList, setSavedJobsList] = useState([])
+  const [savedJobsLoading, setSavedJobsLoading] = useState(false)
   const jobsPerPage = 12
   const navigate = useNavigate()
   const { isDark, toggleDark } = useDarkMode()
@@ -151,9 +154,27 @@ function Dashboard() {
   const handleSearchChange = (v) => { setSearchQuery(v); setShowSavedJobs(false) }
   const handleLocationChange = (v) => { setLocation(v); setShowSavedJobs(false) }
 
-  const savedJobs = jobs.filter(j => bookmarkedIds.includes(j.id))
-  const displayJobs = showSavedJobs ? savedJobs : jobs
-  const displayTotal = showSavedJobs ? savedJobs.length : totalJobs
+  const handleShowSaved = async () => {
+    if (showSavedJobs) { setShowSavedJobs(false); return }
+    setSavedJobsLoading(true)
+    setShowSavedJobs(true)
+    try {
+      const ids = await getBookmarks()
+      if (ids.length === 0) { setSavedJobsList([]); setSavedJobsLoading(false); return }
+      // Fetch each saved job by ID
+      const results = await Promise.all(
+        ids.map(id => api.get(`/jobs/${id}`).then(r => r.data).catch(() => null))
+      )
+      setSavedJobsList(results.filter(Boolean))
+    } catch (e) {
+      console.error(e)
+    } finally {
+      setSavedJobsLoading(false)
+    }
+  }
+
+  const displayJobs = showSavedJobs ? savedJobsList : jobs
+  const displayTotal = showSavedJobs ? savedJobsList.length : totalJobs
   const totalPages = Math.ceil(totalJobs / jobsPerPage)
 
   const paginate = (n) => {
@@ -176,7 +197,7 @@ function Dashboard() {
             <div className="flex items-center space-x-2 sm:space-x-4">
               {isAuthenticated() && (
                 <button
-                  onClick={() => setShowSavedJobs(!showSavedJobs)}
+                  onClick={handleShowSaved}
                   className={`flex items-center space-x-1 sm:space-x-2 px-2 sm:px-4 py-2 rounded-lg transition-colors ${showSavedJobs ? 'bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300' : 'text-slate-600 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800'}`}
                 >
                   <Heart className={`h-4 w-4 ${showSavedJobs ? 'fill-current' : ''}`} />
@@ -320,7 +341,7 @@ function Dashboard() {
               href="https://care-coffee.onrender.com/shop/"
               target="_blank"
               rel="noopener noreferrer"
-              className="mt-4 block rounded-xl overflow-hidden border border-amber-200 dark:border-amber-800 shadow-sm hover:shadow-md transition-shadow group"
+              className="mt-4 block rounded-xl overflow-hidden border border-amber-200 dark:border-amber-800 shadow-sm hover:shadow-md transition-shadow group sticky top-20"
             >
               <div className="bg-gradient-to-br from-amber-900 via-amber-800 to-amber-950 p-5 text-center relative">
                 <div className="text-5xl mb-1">☕</div>
@@ -347,6 +368,17 @@ function Dashboard() {
             {loading && jobs.length === 0 ? (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {[...Array(12)].map((_, i) => <SkeletonCard key={i} />)}
+              </div>
+            ) : showSavedJobs && savedJobsLoading ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {[...Array(6)].map((_, i) => <SkeletonCard key={i} />)}
+              </div>
+            ) : showSavedJobs && savedJobsList.length === 0 && !savedJobsLoading ? (
+              <div className="text-center py-16">
+                <Heart className="h-12 w-12 text-slate-300 mx-auto mb-4" />
+                <h3 className="text-lg font-medium text-slate-900 dark:text-white mb-2">No saved jobs yet</h3>
+                <p className="text-slate-500 dark:text-slate-400 text-sm">Click the heart icon on any job to save it here</p>
+                <button onClick={() => setShowSavedJobs(false)} className="mt-4 text-primary hover:underline text-sm">Browse jobs</button>
               </div>
             ) : displayJobs.length === 0 && !loading ? (
               <div className="text-center py-12">
