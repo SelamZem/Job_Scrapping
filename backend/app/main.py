@@ -18,85 +18,114 @@ from contextlib import asynccontextmanager
 
 Base.metadata.create_all(bind=engine)
 
-# How often to auto-scrape (hours). Override via env var SCRAPE_INTERVAL_HOURS.
 SCRAPE_INTERVAL_HOURS = int(os.getenv("SCRAPE_INTERVAL_HOURS", "6"))
+# Delay before first scrape so server is fully ready to serve requests
+SCRAPE_STARTUP_DELAY = int(os.getenv("SCRAPE_STARTUP_DELAY", "30"))
 
 SCRAPERS = [
-    ('Remotive',            RemotiveAPIScraper()),
-    ('Arbeitnow',           ArbeitnowAPIScraper()),
-    ('We Work Remotely RSS',RSSWeWorkRemotelyScraper()),
-    ('RemoteOK RSS',        RSSRemoteOKScraper()),
-    ('Landing.jobs',        LandingJobsScraper()),
-    ('LinkedIn',            LinkedInScraper()),
-    ('GitHub Jobs',         GitHubJobsScraper()),
-    ('Stack Overflow',      StackOverflowScraper()),
-    ('Authentic Jobs',      AuthenticJobsScraper()),
-    ('EuroJobs',            EuroJobsScraper()),
+    ('Remotive',             RemotiveAPIScraper()),
+    ('Arbeitnow',            ArbeitnowAPIScraper()),
+    ('We Work Remotely RSS', RSSWeWorkRemotelyScraper()),
+    ('RemoteOK RSS',         RSSRemoteOKScraper()),
+    ('Landing.jobs',         LandingJobsScraper()),
+    ('LinkedIn',             LinkedInScraper()),
+    ('GitHub Jobs',          GitHubJobsScraper()),
+    ('Stack Overflow',       StackOverflowScraper()),
+    ('Authentic Jobs',       AuthenticJobsScraper()),
+    ('EuroJobs',             EuroJobsScraper()),
 ]
 
 
-async def run_scrape(label: str = "Scheduled"):
-    """Scrape all sources and persist new jobs. Safe to call concurrently."""
+async def run_scrape(label: str = "Scheduled", delay: int = 0):
+    """
+    Scrape all sources in the background.
+    - delay: seconds to wait before starting (lets server handle requests first)
+    - max 2 scrapers run concurrently to avoid saturating the thread pool
+    """
+    if delay:
+        await asyncio.sleep(delay)
+
+    semaphore = asyncio.Semaphore(2)
+
+    async def scrape_one(source_name, scraper):
+        async with semaphore:
+            try:
+                data = await asyncio.to_thread(scraper.scrape_jobs, "", "", 1)
+                return source_name, data or []
+            except Exception as e:
+                print(f"[{label}] {source_name} error: {e}")
+                return source_name, []
+
     db = SessionLocal()
     try:
-        job_count = db.query(Job).count()
-        print(f"[{label}] DB has {job_count} jobs. Scraping all sources...")
+        print(f"[{label}] Starting scrape ({len(SCRAPERS)} sources)...")
         tag_service = TagService(db)
         jobs_saved = 0
 
-        for source_name, scraper in SCRAPERS:
-            try:
-                jobs_data = await asyncio.to_thread(scraper.scrape_jobs, "", "", 1)
-                if not jobs_data:
-                    continue
+        # Run all scrapers concurrently (max 2 at a time)
+        results = await asyncio.gather(*[scrape_one(n, s) for n, s in SCRAPERS])
+
+        for source_name, jobs_data in results:
+            if not jobs_data:
+                continue
+
+            # Run DB writes in a thread — never blocks the event loop
+            def save_jobs(source_name=source_name, jobs_data=jobs_data):
+                new_count = 0
+                new_jobs = []
                 for job_data in jobs_data:
                     job_data['source'] = source_name.lower().replace(' ', '_')
                     if db.query(Job).filter(Job.url == job_data['url']).first():
                         continue
                     job = Job(**job_data)
                     db.add(job)
+                    new_jobs.append(job)
+                if new_jobs:
                     db.commit()
-                    db.refresh(job)
-                    job.tags = tag_service.extract_tags_from_job(job)
+                    for job in new_jobs:
+                        db.refresh(job)
+                        job.tags = tag_service.extract_tags_from_job(job)
                     db.commit()
-                    jobs_saved += 1
-                print(f"[{label}] {source_name}: saved {len(jobs_data)} jobs")
-            except Exception as e:
-                print(f"[{label}] {source_name} error: {e}")
-                continue
+                    new_count = len(new_jobs)
+                    print(f"[{label}] {source_name}: +{new_count} new jobs")
+                return new_count
+
+            jobs_saved += await asyncio.to_thread(save_jobs)
+            # Yield to event loop between each source
+            await asyncio.sleep(0)
 
         print(f"[{label}] Done — {jobs_saved} new jobs added")
+    except Exception as e:
+        print(f"[{label}] Scrape failed: {e}")
     finally:
         db.close()
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # 1. Run initial scrape in background (non-blocking)
-    asyncio.create_task(run_scrape("Startup"))
+    # Start scraping after a delay so the server handles requests first
+    asyncio.create_task(run_scrape("Startup", delay=SCRAPE_STARTUP_DELAY))
 
-    # 2. Start the recurring scheduler
+    # Recurring scheduler
     scheduler = AsyncIOScheduler()
     scheduler.add_job(
         run_scrape,
         trigger=IntervalTrigger(hours=SCRAPE_INTERVAL_HOURS),
-        kwargs={"label": "Scheduled"},
+        kwargs={"label": "Scheduled", "delay": 0},
         id="periodic_scrape",
         replace_existing=True,
     )
     scheduler.start()
-    print(f"✅ Server ready. Scraping every {SCRAPE_INTERVAL_HOURS}h.")
+    print(f"✅ Server ready. Scrape starts in {SCRAPE_STARTUP_DELAY}s, then every {SCRAPE_INTERVAL_HOURS}h.")
 
     yield
 
-    # Shutdown
     scheduler.shutdown(wait=False)
     print("🛑 Scheduler stopped.")
 
 
 app = FastAPI(title="Care Jobs API", version="1.0.0", lifespan=lifespan)
 
-# CORS
 origins = [
     "http://localhost:5173",
     "http://localhost:5174",
