@@ -11,6 +11,8 @@ function AdminDashboard() {
   const [testing, setTesting] = useState(false)
   const [scraping, setScraping] = useState(false)
   const [scrapeMsg, setScrapeMsg] = useState('')
+  const [showAd, setShowAd] = useState(false)
+  const [adToggling, setAdToggling] = useState(false)
   const navigate = useNavigate()
 
   // Check if user is admin
@@ -25,6 +27,8 @@ function AdminDashboard() {
       return
     }
     fetchHealth()
+    // Load ad setting
+    api.get('/admin/settings').then(r => setShowAd(r.data.show_ad === 'true')).catch(() => {})
   }, [navigate])
 
   const fetchHealth = async () => {
@@ -70,6 +74,19 @@ function AdminDashboard() {
       setScrapeMsg('Failed to start scrape: ' + (error.response?.data?.detail || error.message))
     } finally {
       setScraping(false)
+    }
+  }
+
+  const toggleAd = async () => {
+    setAdToggling(true)
+    const newVal = (!showAd).toString()
+    try {
+      await api.post(`/admin/settings/show_ad?value=${newVal}`)
+      setShowAd(!showAd)
+    } catch (e) {
+      console.error(e)
+    } finally {
+      setAdToggling(false)
     }
   }
 
@@ -195,6 +212,30 @@ function AdminDashboard() {
             {scrapeMsg}
           </div>
         )}
+
+        {/* Ad Control */}
+        <div className="mb-8 bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 p-5">
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="font-semibold text-slate-900 dark:text-white">Care Coffee Ad</h3>
+              <p className="text-sm text-slate-500 dark:text-slate-400 mt-0.5">
+                Show the coffee ad in the sidebar on the jobs page
+              </p>
+            </div>
+            <button
+              onClick={toggleAd}
+              disabled={adToggling}
+              className={`relative inline-flex h-7 w-12 items-center rounded-full transition-colors focus:outline-none ${
+                showAd ? 'bg-green-500' : 'bg-slate-300 dark:bg-slate-600'
+              }`}
+            >
+              <span className={`inline-block h-5 w-5 transform rounded-full bg-white shadow transition-transform ${showAd ? 'translate-x-6' : 'translate-x-1'}`} />
+            </button>
+          </div>
+          <p className="text-xs text-slate-400 mt-2">
+            Status: <span className={showAd ? 'text-green-500 font-medium' : 'text-slate-400'}>{showAd ? 'Visible to users' : 'Hidden'}</span>
+          </p>
+        </div>
 
         {/* Test Results */}
         {testResults && (

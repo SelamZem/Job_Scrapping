@@ -5,9 +5,11 @@ import time
 from app.services.scraper_monitor import scraper_monitor
 from app.api.auth_new import require_admin
 from app.models.user import User
-from app.database import SessionLocal
+from app.models.settings import SiteSetting
+from app.database import SessionLocal, get_db
 from app.models.job import Job
 from app.services import TagService
+from sqlalchemy.orm import Session
 
 router = APIRouter(tags=["admin"])
 
@@ -65,6 +67,38 @@ def _do_scrape():
 async def get_scraper_health(current_user: User = Depends(require_admin)) -> Dict:
     """Get scraper health status — admin only."""
     return scraper_monitor.get_health_summary()
+
+
+@router.get("/settings")
+async def get_settings(db: Session = Depends(get_db), current_user: User = Depends(require_admin)):
+    """Get all site settings — admin only."""
+    settings = db.query(SiteSetting).all()
+    return {s.key: s.value for s in settings}
+
+
+@router.post("/settings/{key}")
+async def update_setting(
+    key: str,
+    value: str,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_admin),
+):
+    """Update a site setting — admin only."""
+    setting = db.query(SiteSetting).filter(SiteSetting.key == key).first()
+    if setting:
+        setting.value = value
+    else:
+        setting = SiteSetting(key=key, value=value)
+        db.add(setting)
+    db.commit()
+    return {"key": key, "value": value}
+
+
+@router.get("/settings/public/{key}")
+async def get_public_setting(key: str, db: Session = Depends(get_db)):
+    """Get a public setting — no auth required."""
+    setting = db.query(SiteSetting).filter(SiteSetting.key == key).first()
+    return {"key": key, "value": setting.value if setting else None}
 
 
 @router.post("/scrape")

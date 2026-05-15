@@ -38,7 +38,8 @@ function Dashboard() {
   const [bookmarkedIds, setBookmarkedIds] = useState([])
   const [showMobileFilter, setShowMobileFilter] = useState(false)
   const [showLoginPrompt, setShowLoginPrompt] = useState(false)
-  const [toast, setToast] = useState(null) // { message, type }
+  const [toast, setToast] = useState(null)
+  const [showAd, setShowAd] = useState(false)
   const jobsPerPage = 12
   const navigate = useNavigate()
   const { isDark, toggleDark } = useDarkMode()
@@ -74,6 +75,12 @@ function Dashboard() {
       setInitialDone(true)
       loadTags()
       loadBookmarks()
+      // Check ad visibility
+      try {
+        const res = await fetch(`${import.meta.env.VITE_API_URL || '/api'}/admin/settings/public/show_ad`)
+        const data = await res.json()
+        setShowAd(data.value === 'true')
+      } catch (e) { /* silent */ }
     }
     init()
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -306,6 +313,26 @@ function Dashboard() {
                 <TagFilter tags={tags} selectedTags={selectedTags} onApplyFilters={handleApplyFilters} onClearFilters={handleClearFilters} />
               </div>
             </div>
+
+            {/* Ad — Care Coffee (admin controlled) */}
+            {showAd && (
+            <a
+              href="https://care-coffee.onrender.com/shop/"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="mt-4 block rounded-xl overflow-hidden border border-amber-200 dark:border-amber-800 shadow-sm hover:shadow-md transition-shadow group"
+            >
+              <div className="bg-gradient-to-br from-amber-900 via-amber-800 to-amber-950 p-5 text-center relative">
+                <div className="text-5xl mb-1">☕</div>
+                <div className="absolute top-2 right-2 text-amber-400 text-xs font-semibold tracking-widest uppercase opacity-70">Ad</div>
+              </div>
+              <div className="bg-amber-50 dark:bg-amber-950 px-4 py-3">
+                <p className="text-sm font-bold text-amber-900 dark:text-amber-200 group-hover:underline">Care Coffee</p>
+                <p className="text-xs text-amber-700 dark:text-amber-400 mt-0.5">Fuel your job hunt — shop premium coffee</p>
+                <span className="inline-block mt-2 text-xs font-medium text-white bg-amber-700 hover:bg-amber-800 px-3 py-1 rounded-full transition-colors">Shop Now →</span>
+              </div>
+            </a>
+            )}
           </div>
 
           {/* Job Listings */}

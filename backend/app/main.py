@@ -8,6 +8,7 @@ from app.api import jobs, recommendations, tags, auth_new as auth, admin, health
 from app.database import engine, Base, SessionLocal
 from app.models.user import User  # ensures table is created
 from app.models.job import Job
+from app.models.settings import SiteSetting  # ensures table is created
 from app.scrapers import (
     RemotiveAPIScraper, ArbeitnowAPIScraper, RSSWeWorkRemotelyScraper,
     RSSRemoteOKScraper, LandingJobsScraper, LinkedInScraper,
