@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, BackgroundTasks
 from typing import Dict
 from datetime import datetime
 import asyncio
@@ -17,11 +17,18 @@ async def get_scraper_health(current_user: User = Depends(require_admin)) -> Dic
 
 
 @router.post("/scrape")
-async def trigger_scrape(current_user: User = Depends(require_admin)):
-    """Manually trigger a full scrape in the background — admin only."""
+async def trigger_scrape(
+    background_tasks: BackgroundTasks,
+    current_user: User = Depends(require_admin)
+):
+    """Manually trigger a full scrape — admin only. Runs in background."""
     from app.main import run_scrape
-    asyncio.create_task(run_scrape("Manual"))
-    return {"message": "Scrape started in background. Check logs for progress."}
+
+    async def _run():
+        await run_scrape("Manual")
+
+    background_tasks.add_task(asyncio.ensure_future, _run())
+    return {"message": "Scrape started. New jobs will appear shortly."}
 
 
 @router.post("/scrapers/test")
