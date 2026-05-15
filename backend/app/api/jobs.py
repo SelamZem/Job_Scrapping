@@ -7,7 +7,6 @@ from app.models.job import Job, Tag, job_tags
 from app.scrapers import RemotiveAPIScraper, ArbeitnowAPIScraper, RSSWeWorkRemotelyScraper, RSSRemoteOKScraper, LandingJobsScraper, GitHubJobsScraper, StackOverflowScraper, AuthenticJobsScraper, EuroJobsScraper
 from app.services import TagService
 from app.services.scraper_monitor import scraper_monitor
-from app.config import cache_response, IS_PRODUCTION
 import time
 from pydantic import BaseModel, Field
 
