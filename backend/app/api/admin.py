@@ -1,13 +1,64 @@
 from fastapi import APIRouter, Depends, BackgroundTasks
 from typing import Dict
 from datetime import datetime
-import asyncio
 import time
 from app.services.scraper_monitor import scraper_monitor
 from app.api.auth_new import require_admin
 from app.models.user import User
+from app.database import SessionLocal
+from app.models.job import Job
+from app.services import TagService
 
 router = APIRouter(tags=["admin"])
+
+
+def _do_scrape():
+    """Synchronous scrape — runs in a thread via BackgroundTasks."""
+    from app.scrapers import (
+        RemotiveAPIScraper, ArbeitnowAPIScraper, RSSWeWorkRemotelyScraper,
+        RSSRemoteOKScraper, LandingJobsScraper, LinkedInScraper,
+        GitHubJobsScraper, StackOverflowScraper, AuthenticJobsScraper, EuroJobsScraper,
+    )
+    scrapers = [
+        ('Remotive',             RemotiveAPIScraper()),
+        ('Arbeitnow',            ArbeitnowAPIScraper()),
+        ('We Work Remotely RSS', RSSWeWorkRemotelyScraper()),
+        ('RemoteOK RSS',         RSSRemoteOKScraper()),
+        ('Landing.jobs',         LandingJobsScraper()),
+        ('LinkedIn',             LinkedInScraper()),
+        ('GitHub Jobs',          GitHubJobsScraper()),
+        ('Stack Overflow',       StackOverflowScraper()),
+        ('Authentic Jobs',       AuthenticJobsScraper()),
+        ('EuroJobs',             EuroJobsScraper()),
+    ]
+    db = SessionLocal()
+    try:
+        tag_service = TagService(db)
+        jobs_saved = 0
+        for source_name, scraper in scrapers:
+            try:
+                jobs_data = scraper.scrape_jobs("", "", 1) or []
+                new_jobs = []
+                for job_data in jobs_data:
+                    job_data['source'] = source_name.lower().replace(' ', '_')
+                    if db.query(Job).filter(Job.url == job_data['url']).first():
+                        continue
+                    job = Job(**job_data)
+                    db.add(job)
+                    new_jobs.append(job)
+                if new_jobs:
+                    db.commit()
+                    for job in new_jobs:
+                        db.refresh(job)
+                        job.tags = tag_service.extract_tags_from_job(job)
+                    db.commit()
+                    jobs_saved += len(new_jobs)
+                    print(f"[Manual] {source_name}: +{len(new_jobs)} new jobs")
+            except Exception as e:
+                print(f"[Manual] {source_name} error: {e}")
+        print(f"[Manual] Done — {jobs_saved} new jobs added")
+    finally:
+        db.close()
 
 
 @router.get("/health")
@@ -19,15 +70,10 @@ async def get_scraper_health(current_user: User = Depends(require_admin)) -> Dic
 @router.post("/scrape")
 async def trigger_scrape(
     background_tasks: BackgroundTasks,
-    current_user: User = Depends(require_admin)
+    current_user: User = Depends(require_admin),
 ):
-    """Manually trigger a full scrape — admin only. Runs in background."""
-    from app.main import run_scrape
-
-    async def _run():
-        await run_scrape("Manual")
-
-    background_tasks.add_task(asyncio.ensure_future, _run())
+    """Manually trigger a full scrape — admin only."""
+    background_tasks.add_task(_do_scrape)
     return {"message": "Scrape started. New jobs will appear shortly."}
 
 
@@ -39,7 +85,6 @@ async def test_scrapers(current_user: User = Depends(require_admin)) -> Dict:
         RSSRemoteOKScraper, LandingJobsScraper, GitHubJobsScraper,
         StackOverflowScraper, AuthenticJobsScraper, EuroJobsScraper
     )
-
     scrapers = [
         ("Remotive",             RemotiveAPIScraper()),
         ("Arbeitnow",            ArbeitnowAPIScraper()),
@@ -51,7 +96,6 @@ async def test_scrapers(current_user: User = Depends(require_admin)) -> Dict:
         ("Authentic Jobs",       AuthenticJobsScraper()),
         ("EuroJobs",             EuroJobsScraper()),
     ]
-
     results = []
     for name, scraper in scrapers:
         start_time = time.time()
